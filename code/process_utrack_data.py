@@ -44,7 +44,7 @@ Longitude range is 0 to 360
 def save_subset_utrack_data(mon,source_region='TP',lat_south=0,lat_north=70, lon_west=50, lon_east=180):
     d = xr.open_dataset('../data/utrack_climatology_0.5_%s.nc'%mon)
 
-    myindex=make_region_mask(region=source_region,track_type='source')
+    myindex=make_region_mask(region=source_region,track_type='source')[0]
 #    myindex.grid.to_pandas().reset_index().iloc[:,0:2].to_csv('../data/processed/grid_index_source_region_%s.csv'%region)
 
     # set export lat lon boundary
@@ -62,14 +62,17 @@ def save_subset_utrack_data(mon,source_region='TP',lat_south=0,lat_north=70, lon
                             )
     for i in range(myindex.shape[0]):
 #    for i in range(10):
+#        temp=conversion_value(d.moisture_flow.sel(sourcelat=myindex.sourcelat.values[i],
+#                        sourcelon=myindex.sourcelon.values[i]).where(ma_boundary,drop=True))
+
         temp=conversion_value(d.moisture_flow.sel(sourcelat=myindex.sourcelat.values[i],
-                        sourcelon=myindex.sourcelon.values[i]).where(ma_boundary,drop=True))
-        print('grid %d has percent sum of %f'%(i,temp.sum()))
-        frc_export[i]=temp
+                                                  sourcelon=myindex.sourcelon.values[i]))
+        temp2=temp/temp.sum() # renormalize to sum as one
+        frc_export[i]=temp2.where(ma_boundary,drop=True)
+        print('grid %d has percent sum of %f'%(i,frc_export[i].sum()))
 
     frc_export.to_netcdf('../data/processed/utrack_climatology_0.5_%s_%s.nc'%(mon,source_region))
     print('file saved')
-
 
 # Create region grid index
 def region_grid_index(region):
@@ -97,7 +100,7 @@ def save_prec_contribution(source_region='TP'):
     for i in range(12):
         dfm = xr.open_dataset('../data/processed/utrack_climatology_0.5_%02d_TP.nc'%(i+1))
         # extract ET values for all grids at month i, dim = (13xx,)
-        temp_et = dfe.sel(time=i,
+        temp_et = dfe.sel(month=i+1,
                           lat=xr.DataArray(subregion_index.loc[subregion_index[source_region].dropna().index,'sourcelat'].values+0.25),
                           lon=xr.DataArray(subregion_index.loc[subregion_index[source_region].dropna().index,'sourcelon'].values+0.25))
         # expand 1d ET to size of 3d dfm, dim= (13xx, 14x, 26x)
@@ -108,15 +111,40 @@ def save_prec_contribution(source_region='TP'):
         pre[i,:,:] = temp_p.sum(axis=0)
     
     # create 3d array to save subset data within export boundary [grid, targetlat, targelon]
-    pre_export=xr.DataArray(pre, coords=[range(12), dfe.lat,dfe.lon],
+    pre_export=xr.DataArray(pre, coords=[range(1,13), dfe.lat,dfe.lon],
                             dims=['month','lat','lon'],
                             name='prec')
     pre_export.to_netcdf('../data/processed/utrack_climatology_prec_0.5_mon_%s.nc'%(source_region))
     print('prec contribution file for region %s saved'%source_region)
 
+def save_prec_contribution_by_etrend(source_region='TP'):
+    subregion_index=make_subregion_index()
+    dfe = xr.open_dataset('../data/processed/Etrend_2000-2020_GLEAM_v3.5a_TP_mon.nc')['E_trend']*21 #2000 to 2020, 21 years
+    n_lat, n_lon = dfe.shape[1::]
+    pre = np.zeros([12, n_lat, n_lon])
+    for i in range(12):
+        dfm = xr.open_dataset('../data/processed/utrack_climatology_0.5_%02d_TP.nc'%(i+1))
+        # extract ET values for all grids at month i, dim = (13xx,)
+        temp_et = dfe.sel(month=i+1,
+                          lat=xr.DataArray(subregion_index.loc[subregion_index[source_region].dropna().index,'sourcelat'].values+0.25),
+                          lon=xr.DataArray(subregion_index.loc[subregion_index[source_region].dropna().index,'sourcelon'].values+0.25))
+        # expand 1d ET to size of 3d dfm, dim= (13xx, 14x, 26x)
+        # based on https://stackoverflow.com/questions/60044087/expand-and-copy-1d-numpy-array-to-3d
+        # prec contri = moisture pct for selected grid (3d: grid, lat, lon) * grid ET (expanded to 3d, grid, lat, lon)
+        temp_p=dfm.moisture_flow.sel(grid=subregion_index[source_region].dropna().index.values) * np.tile(temp_et.values[:, np.newaxis, np.newaxis], (1, n_lat, n_lon))
+        # calculate by subregion
+        pre[i,:,:] = temp_p.sum(axis=0)
+    
+    # create 3d array to save subset data within export boundary [grid, targetlat, targelon]
+    pre_export=xr.DataArray(pre, coords=[range(1,13), dfe.lat,dfe.lon],
+                            dims=['month','lat','lon'],
+                            name='prec')
+    pre_export.to_netcdf('../data/processed/prec_change_by_et_change_2000-2020_%s.nc'%(source_region))
+    print('prec contribution by et change file for region %s saved'%source_region)
+
 if __name__=="__main__":
-#    for i in ['01','02','03','04','05','06','07','08','09','10','11','12']:
-#        save_subset_utrack_data(i,source_region='TP')
+#    for i in range(12):
+#        save_subset_utrack_data('%02d'%(i+1),source_region='TP')
 
 #    make_region_mask(region='TP',track_type='source',save_index=True)
 #    make_region_mask(region='lindibaohu',track_type='source',save_index=True)
@@ -129,3 +157,4 @@ if __name__=="__main__":
 #    save_prec_contribution(source_region='caodibaohu')
 #    save_prec_contribution(source_region='shahuazhili')
 #    save_prec_contribution(source_region='shuituliushi')
+    save_prec_contribution_by_etrend()
