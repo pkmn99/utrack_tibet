@@ -52,7 +52,7 @@ def calculate_zonal(shape_fn, data, affine, name):
     return re.join(pd.DataFrame(zs)).set_index('name')['mean'].rename(name)
 
 # save zonal resutls to csv file
-def save_zonal(source_region='TP'):
+def save_zonal_prec(source_region='TP'):
     shape_fn = '../data/shp/China_provinces_with_around_countries.shp'
     df = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s.nc'%source_region)
     af = make_affine()
@@ -66,6 +66,24 @@ def save_zonal(source_region='TP'):
     df_result.to_csv('../data/processed/prec_mon_%s_zonal.csv'%source_region)
     print('zonal results saved')
 
+# save zonal resutls for prec change induced by et change
+def save_zonal_prec_et(source_region='TP'):
+    shape_fn = '../data/shp/China_provinces_with_around_countries.shp'
+    
+    df = xr.open_dataset('../data/processed/prec_change_by_et_change_2000-2020_%s.nc'%source_region)
+    af = make_affine()
+    re=get_region_list()
+    prec_temp = [calculate_zonal(shape_fn, df.prec[i].values, af, 'prec'+str(i+1)) for i in range(12)]
+    
+    df_result= pd.DataFrame(prec_temp).transpose()
+    
+    # Calculate year sum prec
+    df_result.loc[:,'precYear']=df_result.iloc[:,0:12].sum(axis=1)
+    df_result.to_csv('../data/processed/prec_change_by_et_mon_%s_zonal.csv'%source_region)
+    print('zonal results saved')
+
 
 if __name__=="__main__":
-    save_zonal()
+  #  save_zonal_prec()
+    save_zonal_prec_et()
+
