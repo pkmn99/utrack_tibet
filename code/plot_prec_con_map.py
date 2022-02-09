@@ -33,7 +33,7 @@ def set_lat_lon(ax, xtickrange, ytickrange, label=False,pad=0.05, fontsize=8):
     ax.set_ylabel('')
     ax.set_xlabel('')
 
-def plot_map(d, ax, levels, minmax=[]):
+def plot_map(d, ax, levels, minmax=[],cmap='rainbow'):
     # Load geographical data
     tb_shp=shpreader.Reader('../data/shp/DBATP_Polygon.shp')
     china_shp=shpreader.Reader('../data/shp/China_provinces_with_around_countries.shp')
@@ -50,7 +50,7 @@ def plot_map(d, ax, levels, minmax=[]):
 
     ax.set_extent([70, 140, 10, 50], ccrs.Geodetic())
 
-    d.plot.contourf(cmap='rainbow',
+    d.plot.contourf(cmap=cmap,
                     levels=levels,
                     add_colorbar=False,ax=ax)
 
@@ -136,11 +136,13 @@ def make_plot():
     cbbig1.set_label('Precipitation contribution (mm)')
     
     ######################### Panel B: precipitation contribution in different provinces
-    ax2 = fig.add_axes([0.575, 0.6, 0.4, 0.325],frameon=False)
+    ax2 = fig.add_axes([0.575, 0.6, 0.4, 0.325],frameon=True)
     
-    ds30.plot(kind='bar',color=mybincolor1,ax=ax2, legend=False)
+    ds30.plot(kind='bar', color=mybincolor1, ax=ax2, legend=False, edgecolor='k',linewidth=0.75)
     ax2.set_ylabel('Precipitation contribution (mm)')
     ax2.set_xlabel('')
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
     
     
     ###################### Panel C: relative contribution map
@@ -160,12 +162,13 @@ def make_plot():
     cbbig2.set_label('Precipitation contribution (%)')
     
     ################### Panel D: relative precipitation contribution in different provinces
-    # ax2 = fig.add_axes([0.075, 0.25, 0.5, 0.4],frameon=False)
-    ax4 = fig.add_axes([0.575, 0.125, 0.4, 0.325],frameon=False)
+    ax4 = fig.add_axes([0.575, 0.125, 0.4, 0.325],frameon=True)
     
-    dsr.plot(kind='bar',color=mybincolor2,ax=ax4, legend=False)
+    dsr.plot(kind='bar', color=mybincolor2, ax=ax4, legend=False, edgecolor='k',linewidth=0.75)
     ax4.set_ylabel('Precipitation contribution (%)')
     ax4.set_xlabel('')
+    ax4.spines['top'].set_visible(False)
+    ax4.spines['right'].set_visible(False)
     
     # add panel label
     plot_subplot_label(ax1, 'a', left_offset=-0.1, upper_offset=0.125)
@@ -173,7 +176,7 @@ def make_plot():
     plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.125)
     plot_subplot_label(ax4, 'd', left_offset=-0.05,upper_offset=0.05)
     
-    plt.savefig('../figure/figure_prec_con_map.png',dpi=300)
+    plt.savefig('../figure/figure_prec_con_map0209.png',dpi=300)
     print('figure saved')
    
 if __name__=="__main__":
