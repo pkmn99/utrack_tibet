@@ -1,10 +1,12 @@
 import xarray as xr
 import pandas as pd
+import numpy as np
 from rasterstats import zonal_stats
 from affine import Affine
 
 from plot_prec_con_map import load_zonal_prec
 from plot_et_prec_change import get_china_list
+from process_et_data import get_tb_mask
 
 """
 Make affine. Parameters for TP 
@@ -127,7 +129,7 @@ def save_table():
     ds_other = load_zonal_prec(rank=1000,lc_type='other')
     
     table1=ds_tp_abs.reindex(china_list).rename(columns={'precYear':'Annual'}).join(
-           ds_tp_rel.reindex(china_list).rename(columns={'precYear':'Annual_rel'}),rsuffix='_0').sort_values(by='Annual',ascending=False)
+           ds_tp_rel.reindex(china_list).rename(columns={'precYear':'Annual_rel'}),rsuffix='_rel').sort_values(by='Annual',ascending=False)
     
     table2=ds_cao.reindex(china_list).rename(columns={'precYear':'caodizhili'}).join(
            ds_lin.reindex(china_list).rename(columns={'precYear':'lindizhili'})).join(
@@ -139,8 +141,31 @@ def save_table():
            ds_grass.reindex(china_list).rename(columns={'precYear':'grass'})).join(
            ds_baresnow.reindex(china_list).rename(columns={'precYear':'baresnow'})).join(
            ds_other.reindex(china_list).rename(columns={'precYear':'other'}))
+
+
+    # within-TP contribution
+    dpc = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP.nc')
+    dp = xr.open_dataset('../data/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
+    tb=get_tb_mask(scale='TP')
+    # TP prec seasonal prec contribution 
+    temp_pc=[dpc.prec.where(tb).mean(dim=['lat','lon']).sel(month=[3,4,5]).sum().values,
+            dpc.prec.where(tb).mean(dim=['lat','lon']).sel(month=[6,7,8]).sum().values,
+            dpc.prec.where(tb).mean(dim=['lat','lon']).sel(month=[9,10,11]).sum().values,
+            dpc.prec.where(tb).mean(dim=['lat','lon']).sel(month=[12,1,2]).sum().values,
+            dpc.prec.where(tb).mean(dim=['lat','lon']).sum().values]
     
-    table1.join(table2).join(table3).to_csv('../data/processed/summary_table.csv')
+   # TP prec 
+    temp_p=[dp.prec.where(tb).mean(dim=['lat','lon']).sel(month=[3,4,5]).sum().values,
+            dp.prec.where(tb).mean(dim=['lat','lon']).sel(month=[6,7,8]).sum().values,
+            dp.prec.where(tb).mean(dim=['lat','lon']).sel(month=[9,10,11]).sum().values,
+            dp.prec.where(tb).mean(dim=['lat','lon']).sel(month=[12,1,2]).sum().values,
+            dp.prec.where(tb).mean(dim=['lat','lon']).sum().values]
+    
+   # construct table 4 
+    d = {"TP": np.append(temp_pc,np.array(temp_pc)/np.array(temp_p))}
+    table4=pd.DataFrame(d,index=['MAM','JJA','SON','DJF','Annual','MAM_rel','JJA_rel','SON_rel','DJF_rel','Annual_rel']).transpose()
+    
+    table1.join(table2).join(table3).append(table4,sort=False).to_csv('../data/processed/summary_table.csv')
     print('summary table saved')
 
 if __name__=="__main__":

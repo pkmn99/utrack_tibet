@@ -73,6 +73,18 @@ def subset_tb(df):
     ma_boundary=(df.lat>=0) & (df.lat<=70.25) & (df.lon>=50) & (df.lon<=180.25)
     return df.where(ma_boundary,drop=True)
 
+# get tp mask
+def get_tb_mask(scale='global'):
+    tb=xr.open_dataset('../data/DBATP_360x720-touch.nc')
+    if scale=='TP':
+        tb=xr.DataArray(np.flipud(tb.Band1.values==1),
+                             coords=[tb.coords['lat'][::-1],tb.coords['lon']],
+                             dims=['lat','lon'])
+        tb_mask=subset_tb(tb)
+    else:
+        tb_mask=tb.Band1==1
+    return tb_mask
+
 # return the et fraction based on MODIS data for different land cover groups
 # return 1 for all type (default)
 def et_lc_fraction(lc_type='all'):
