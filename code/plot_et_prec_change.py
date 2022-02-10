@@ -11,8 +11,8 @@ from cartopy.feature import ShapelyFeature
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from plot_prec_con_map import plot_map,set_lat_lon,uneven_cmap,plot_subplot_label
 
-
-def get_region_list(region):
+# get province list for China
+def get_china_list(region):
     northwest=['Shaanxi','Gansu','Qinghai','Ningxia','Xinjiang']
     north=['Beijing','Tianjin','Hebei','Shanxi','Neimeng']
     northeast=['Liaoning','Jilin','Heilongjiang']
@@ -57,7 +57,7 @@ def make_plot():
     
     # zonal prec
     ds=pd.read_csv('../data/processed/prec_change_by_et_mon_TP_zonal.csv')
-    china_list=get_region_list('china')
+    china_list=get_china_list('china')
     # only china
     ds_etp=ds.set_index('name').reindex(china_list)['precYear'].sort_values(ascending=False)
     
