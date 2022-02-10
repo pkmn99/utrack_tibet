@@ -3,6 +3,9 @@ import pandas as pd
 from rasterstats import zonal_stats
 from affine import Affine
 
+from plot_prec_con_map import load_zonal_prec
+from plot_et_prec_change import get_china_list
+
 """
 Make affine. Parameters for TP 
 """
@@ -52,19 +55,27 @@ def calculate_zonal(shape_fn, data, affine, name):
     return re.join(pd.DataFrame(zs)).set_index('name')['mean'].rename(name)
 
 # save zonal resutls to csv file
-def save_zonal_prec(source_region='TP'):
+# precipitation contribution by ET
+def save_zonal_prec_con(source_region='TP',lc_type='all'):
     shape_fn = '../data/shp/China_provinces_with_around_countries.shp'
-    df = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s.nc'%source_region)
     af = make_affine()
     re=get_region_list()
+    if lc_type=='all':
+        df = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s.nc'%source_region)
+    else:
+        df = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s.nc'%(source_region,lc_type))
     prec_temp = [calculate_zonal(shape_fn, df.prec[i].values, af, 'prec'+str(i+1)) for i in range(12)]
     
     df_result= pd.DataFrame(prec_temp).transpose()
     
     # Calculate year sum prec
     df_result.loc[:,'precYear']=df_result.iloc[:,0:12].sum(axis=1)
-    df_result.to_csv('../data/processed/prec_mon_%s_zonal.csv'%source_region)
-    print('zonal results saved')
+
+    if lc_type=='all':
+        df_result.to_csv('../data/processed/prec_con_mon_%s_zonal.csv'%source_region)
+    else:
+        df_result.to_csv('../data/processed/prec_con_mon_%s_%s_zonal.csv'%(source_region,lc_type))
+    print('zonal results saved for source_region %s and lc_type %s'%(source_region,lc_type))
 
 # save zonal resutls for prec change induced by et change
 def save_zonal_prec_et(source_region='TP'):
@@ -82,8 +93,70 @@ def save_zonal_prec_et(source_region='TP'):
     df_result.to_csv('../data/processed/prec_change_by_et_mon_%s_zonal.csv'%source_region)
     print('zonal results saved')
 
+# zonal annual precipitation, used to calculate relative contribution 
+def save_zonal_prec(source_region='TP'):
+    shape_fn = '../data/shp/China_provinces_with_around_countries.shp'
+    df = xr.open_dataset('../data/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
+    af = make_affine()
+    re=get_region_list()
+    prec_temp = [calculate_zonal(shape_fn, df.prec[i].values, af, 'prec'+str(i+1)) for i in range(12)]
+    
+    df_result= pd.DataFrame(prec_temp).transpose()
+    
+    # Calculate year sum prec
+    df_result.loc[:,'precYear']=df_result.iloc[:,0:12].sum(axis=1)
+    df_result.to_csv('../data/processed/prec_mon_%s_zonal.csv'%source_region)
+    print('zonal results saved')
+
+# create summerized table for TP, subregion, and different 
+def save_table():
+    china_list=get_china_list('china')
+    
+    ds_tp_abs = load_zonal_prec(type='absolute',time_scale='season',rank=1000)
+    ds_tp_rel = load_zonal_prec(type='relative',time_scale='season',rank=1000)
+    
+    ds_lin = load_zonal_prec(rank=1000,source_region='lindibaohu')
+    ds_cao = load_zonal_prec(rank=1000,source_region='caodibaohu')
+    ds_shui = load_zonal_prec(rank=1000,source_region='shuituliushi')
+    ds_sha = load_zonal_prec(rank=1000,source_region='shahuazhili')
+    
+    ds_forest = load_zonal_prec(rank=1000,lc_type='forest')
+    ds_shrub = load_zonal_prec(rank=1000,lc_type='shrub')
+    ds_grass = load_zonal_prec(rank=1000,lc_type='grass')
+    ds_baresnow = load_zonal_prec(rank=1000,lc_type='baresnow')
+    ds_other = load_zonal_prec(rank=1000,lc_type='other')
+    
+    table1=ds_tp_abs.reindex(china_list).rename(columns={'precYear':'Annual'}).join(
+           ds_tp_rel.reindex(china_list).rename(columns={'precYear':'Annual_rel'}),rsuffix='_0').sort_values(by='Annual',ascending=False)
+    
+    table2=ds_cao.reindex(china_list).rename(columns={'precYear':'caodizhili'}).join(
+           ds_lin.reindex(china_list).rename(columns={'precYear':'lindizhili'})).join(
+           ds_shui.reindex(china_list).rename(columns={'precYear':'shuituliushi'})).join(
+           ds_sha.reindex(china_list).rename(columns={'precYear':'shahuazhili'}))
+    
+    table3=ds_forest.reindex(china_list).rename(columns={'precYear':'forest'}).join(
+           ds_shrub.reindex(china_list).rename(columns={'precYear':'shrub'})).join(
+           ds_grass.reindex(china_list).rename(columns={'precYear':'grass'})).join(
+           ds_baresnow.reindex(china_list).rename(columns={'precYear':'baresnow'})).join(
+           ds_other.reindex(china_list).rename(columns={'precYear':'other'}))
+    
+    table1.join(table2).join(table3).to_csv('../data/processed/summary_table.csv')
+    print('summary table saved')
 
 if __name__=="__main__":
-  #  save_zonal_prec()
-    save_zonal_prec_et()
+#    save_zonal_prec_con()
+#    save_zonal_prec()
+#    save_zonal_prec_et()
+# save zonal for different TP subregions
+#    save_zonal_prec_con(source_region='lindibaohu')
+#    save_zonal_prec_con(source_region='caodibaohu')
+#    save_zonal_prec_con(source_region='shahuazhili')
+#    save_zonal_prec_con(source_region='shuituliushi')
 
+# save zonal for different TP land cover groups 
+#    save_zonal_prec_con(lc_type='forest')
+#    save_zonal_prec_con(lc_type='grass')
+#    save_zonal_prec_con(lc_type='shrub')
+#    save_zonal_prec_con(lc_type='baresnow')
+#    save_zonal_prec_con(lc_type='other')
+    save_table()

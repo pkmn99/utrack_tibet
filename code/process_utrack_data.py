@@ -91,10 +91,11 @@ def make_subregion_index():
 
 """
 Calculate ET contribution to total precipitation over the region
+add option for different land cover groups
 """
-def save_prec_contribution(source_region='TP'):
+def save_prec_contribution(source_region='TP',lc_type='all'):
     subregion_index=make_subregion_index()
-    dfe = load_et_region()
+    dfe = load_et_region(lc_type=lc_type)
     n_lat, n_lon = dfe.shape[1::]
     pre = np.zeros([12, n_lat, n_lon])
     for i in range(12):
@@ -114,8 +115,12 @@ def save_prec_contribution(source_region='TP'):
     pre_export=xr.DataArray(pre, coords=[range(1,13), dfe.lat,dfe.lon],
                             dims=['month','lat','lon'],
                             name='prec')
-    pre_export.to_netcdf('../data/processed/utrack_climatology_prec_0.5_mon_%s.nc'%(source_region))
-    print('prec contribution file for region %s saved'%source_region)
+    if lc_type=='all':
+        pre_export.to_netcdf('../data/processed/utrack_climatology_prec_0.5_mon_%s.nc'%(source_region))
+    else:
+        pre_export.to_netcdf('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s.nc'%(source_region,lc_type))
+    
+    print('prec contribution file for region %s and lc type %s saved'%(source_region,lc_type))
 
 def save_prec_contribution_by_etrend(source_region='TP'):
     subregion_index=make_subregion_index()
@@ -152,9 +157,17 @@ if __name__=="__main__":
 #    make_region_mask(region='shahuazhili',track_type='source',save_index=True)
 #    make_region_mask(region='shuituliushi',track_type='source',save_index=True)
 
-    save_prec_contribution(source_region='TP')
+# save precipitation contribution for different regions
+#    save_prec_contribution(source_region='TP')
 #    save_prec_contribution(source_region='lindibaohu')
 #    save_prec_contribution(source_region='caodibaohu')
 #    save_prec_contribution(source_region='shahuazhili')
 #    save_prec_contribution(source_region='shuituliushi')
-    save_prec_contribution_by_etrend()
+#    save_prec_contribution_by_etrend()
+
+# save precipitation contribution for different land cover groups 
+#    save_prec_contribution(lc_type='forest')
+    save_prec_contribution(lc_type='shrub')
+    save_prec_contribution(lc_type='grass')
+    save_prec_contribution(lc_type='baresnow')
+    save_prec_contribution(lc_type='other')

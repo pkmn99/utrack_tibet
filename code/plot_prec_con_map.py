@@ -74,18 +74,38 @@ def bin_color(df,bins):
 def plot_subplot_label(ax, txt, left_offset=-0.05, upper_offset=0.05):
     ax.text(left_offset, 1+upper_offset, txt, fontsize=14, transform=ax.transAxes, fontweight='bold')
 
+def cal_season(ds,varname='prec'):
+    ds.loc[:,'MAM']=ds.loc[:,slice('%s3'%varname,'%s5'%varname)].sum(axis=1)
+    ds.loc[:,'JJA']=ds.loc[:,slice('%s6'%varname,'%s8'%varname)].sum(axis=1)
+    ds.loc[:,'SON']=ds.loc[:,slice('%s9'%varname,'%s11'%varname)].sum(axis=1)
+    ds.loc[:,'DJF']=ds.loc[:,[varname+'12',varname+'1',varname+'2']].sum(axis=1)
+    return ds                        
+
 # calculate et relative contribution to prec in different provinces
 # return the top 30
 # Manually edited Kashmir on two csv file to shorten the name
-def load_zonal_prec(type='absolute'):
-    ds = pd.read_csv('../data/processed/prec_con_mon_TP_zonal.csv')
-    if type=='relative':
-        dpz=pd.read_csv('../data/processed/prec_mon_TP_zonal.csv')
-        ds30 = ((ds.set_index('name')['precYear']/dpz.set_index('name')['precYear']).replace(np.inf,np.nan).sort_values(ascending=False)).dropna().to_frame()[:30]
-    if type=='absolute':
-        ds30=ds[['name','precYear']].set_index('name').sort_values(by='precYear',ascending=False)[:30]
-    return ds30
+def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP',lc_type='all'):
+    if lc_type=='all':
+        ds = pd.read_csv('../data/processed/prec_con_mon_%s_zonal.csv'%source_region)
+    else:
+        ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_zonal.csv'%(source_region,lc_type))
 
+    if (type=='absolute')&(time_scale=='year'):
+        ds30=ds[['name','precYear']].set_index('name').sort_values(by='precYear',ascending=False)[:rank]
+    if (type=='absolute')&(time_scale=='season'):
+        ds=cal_season(ds)
+        ds30=ds[['name','MAM','JJA','SON','DJF','precYear']].set_index('name').sort_values(by='precYear',ascending=False)[:rank]
+    if (type=='relative')&(time_scale=='year'):
+        dpz=pd.read_csv('../data/processed/prec_mon_%s_zonal.csv'%source_region)
+        ds30 = ((ds.set_index('name')['precYear']/dpz.set_index('name')['precYear']).replace(np.inf,np.nan).sort_values(ascending=False)).dropna().to_frame()[:rank]
+    if (type=='relative')&(time_scale=='season'):
+        dpz=pd.read_csv('../data/processed/prec_mon_%s_zonal.csv'%source_region)
+        ds=cal_season(ds)
+        dpz=cal_season(dpz)
+        ds30 = ((ds.set_index('name')[['MAM','JJA','SON','DJF','precYear']] \
+                 /dpz.set_index('name')[['MAM','JJA','SON','DJF','precYear']]) \
+                .replace(np.inf,np.nan).sort_values(by='precYear',ascending=False)).dropna()[:rank]
+    return ds30
 
 # calculate et relative contribution to prec 
 def load_prec_conptc():
