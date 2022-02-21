@@ -123,7 +123,7 @@ def make_plot():
     plot_subplot_label(ax3, 'c', left_offset=-0.15,upper_offset=0.1)
     
     
-    plt.savefig('../figure/figure_et_prec_change.png',dpi=300,bbox_inches='tight')
+    plt.savefig('../figure/figure_et_prec_change_0221.png',dpi=300,bbox_inches='tight')
     print('figure saved')
 
 if __name__=="__main__":
