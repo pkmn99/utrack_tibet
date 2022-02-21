@@ -110,6 +110,35 @@ def save_zonal_prec(source_region='TP'):
     df_result.to_csv('../data/processed/prec_mon_%s_zonal.csv'%source_region)
     print('zonal results saved')
 
+# calculate in-TP prec contribution
+def intp_con(type='both',source_region='TP',scale='seasonal',lc_type='all'):
+    # within-TP contribution
+    if lc_type=='all':
+        dpc = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s.nc'%source_region)
+    else:
+        dpc = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s.nc'%(source_region,lc_type))
+    dp = xr.open_dataset('../data/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
+    tb=get_tb_mask(scale='TP')
+
+    # TP prec seasonal prec contribution 
+    if (scale=='seasonal')&(type=='both'):
+        temp_pc=[dpc.prec.where(tb).mean(dim=['lat','lon']).sel(month=[3,4,5]).sum().values,
+                dpc.prec.where(tb).mean(dim=['lat','lon']).sel(month=[6,7,8]).sum().values,
+                dpc.prec.where(tb).mean(dim=['lat','lon']).sel(month=[9,10,11]).sum().values,
+                dpc.prec.where(tb).mean(dim=['lat','lon']).sel(month=[12,1,2]).sum().values,
+                dpc.prec.where(tb).mean(dim=['lat','lon']).sum().values]
+       # TP prec 
+        temp_p=[dp.prec.where(tb).mean(dim=['lat','lon']).sel(month=[3,4,5]).sum().values,
+                dp.prec.where(tb).mean(dim=['lat','lon']).sel(month=[6,7,8]).sum().values,
+                dp.prec.where(tb).mean(dim=['lat','lon']).sel(month=[9,10,11]).sum().values,
+                dp.prec.where(tb).mean(dim=['lat','lon']).sel(month=[12,1,2]).sum().values,
+                dp.prec.where(tb).mean(dim=['lat','lon']).sum().values]
+
+    if (scale=='year')&(type=='absolute'):
+        temp_pc=dpc.prec.where(tb).mean(dim=['lat','lon']).sum().values
+        temp_p=temp_pc # dummy variable
+    return temp_pc,temp_p
+
 # create summerized table for TP, subregion, and different 
 def save_table():
     china_list=get_china_list('china')
@@ -131,8 +160,8 @@ def save_table():
     table1=ds_tp_abs.reindex(china_list).rename(columns={'precYear':'Annual'}).join(
            ds_tp_rel.reindex(china_list).rename(columns={'precYear':'Annual_rel'}),rsuffix='_rel').sort_values(by='Annual',ascending=False)
     
-    table2=ds_cao.reindex(china_list).rename(columns={'precYear':'caodizhili'}).join(
-           ds_lin.reindex(china_list).rename(columns={'precYear':'lindizhili'})).join(
+    table2=ds_cao.reindex(china_list).rename(columns={'precYear':'caodibaohu'}).join(
+           ds_lin.reindex(china_list).rename(columns={'precYear':'lindibaohu'})).join(
            ds_shui.reindex(china_list).rename(columns={'precYear':'shuituliushi'})).join(
            ds_sha.reindex(china_list).rename(columns={'precYear':'shahuazhili'}))
     
@@ -144,29 +173,35 @@ def save_table():
 
 
     # within-TP contribution
-    dpc = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP.nc')
-    dp = xr.open_dataset('../data/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
-    tb=get_tb_mask(scale='TP')
-    # TP prec seasonal prec contribution 
-    temp_pc=[dpc.prec.where(tb).mean(dim=['lat','lon']).sel(month=[3,4,5]).sum().values,
-            dpc.prec.where(tb).mean(dim=['lat','lon']).sel(month=[6,7,8]).sum().values,
-            dpc.prec.where(tb).mean(dim=['lat','lon']).sel(month=[9,10,11]).sum().values,
-            dpc.prec.where(tb).mean(dim=['lat','lon']).sel(month=[12,1,2]).sum().values,
-            dpc.prec.where(tb).mean(dim=['lat','lon']).sum().values]
-    
-   # TP prec 
-    temp_p=[dp.prec.where(tb).mean(dim=['lat','lon']).sel(month=[3,4,5]).sum().values,
-            dp.prec.where(tb).mean(dim=['lat','lon']).sel(month=[6,7,8]).sum().values,
-            dp.prec.where(tb).mean(dim=['lat','lon']).sel(month=[9,10,11]).sum().values,
-            dp.prec.where(tb).mean(dim=['lat','lon']).sel(month=[12,1,2]).sum().values,
-            dp.prec.where(tb).mean(dim=['lat','lon']).sum().values]
+    [temp_pc,temp_p]=intp_con()
     
    # construct table 4 
     d = {"TP": np.append(temp_pc,np.array(temp_pc)/np.array(temp_p))}
     table4=pd.DataFrame(d,index=['MAM','JJA','SON','DJF','Annual','MAM_rel','JJA_rel','SON_rel','DJF_rel','Annual_rel']).transpose()
     
-    table1.join(table2).join(table3).append(table4,sort=False).to_csv('../data/processed/summary_table.csv')
+    # table 5: inTP contribution for subregion
+    temp_lin=intp_con(type='absolute',source_region='lindibaohu',scale='year')[0]
+    temp_cao=intp_con(type='absolute',source_region='caodibaohu',scale='year')[0]
+    temp_shui=intp_con(type='absolute',source_region='shuituliushi',scale='year')[0]
+    temp_sha=intp_con(type='absolute',source_region='shahuazhili',scale='year')[0]
+    d = {"TP": np.array([temp_lin,temp_cao,temp_shui,temp_sha])}
+    table5=pd.DataFrame(d,index=['lindibaohu','caodibaohu','shuituliushi','shahuazhili']).transpose()
+
+    # table 6: inTP contribution for different lc groups 
+    temp_forest=intp_con(type='absolute',lc_type='forest',scale='year')[0]
+    temp_shrub=intp_con(type='absolute',lc_type='shrub',scale='year')[0]
+    temp_grass=intp_con(type='absolute',lc_type='grass',scale='year')[0]
+    temp_baresnow=intp_con(type='absolute',lc_type='baresnow',scale='year')[0]
+    temp_other=intp_con(type='absolute',lc_type='other',scale='year')[0]
+    d = {"TP": np.array([temp_forest,temp_shrub,temp_grass,temp_baresnow,temp_other])}
+    table6=pd.DataFrame(d,index=['forest','shrub','grass','baresnow','other']).transpose()
+
+   # table1.join(table2).join(table3).append(table4,sort=False).append(table5,sort=False) \
+   #         .append(table6,sort=False).to_csv('../data/processed/summary_table.csv')
+    table1.join(table2).join(table3).append(table4.join(table5).join(table6),sort=False) \
+             .to_csv('../data/processed/summary_table.csv')
     print('summary table saved')
+
 
 if __name__=="__main__":
 #    save_zonal_prec_con()
