@@ -108,14 +108,15 @@ def et_lc_fraction(lc_type='all'):
     return det_lc.values
 
 # load et data values for different land cover groups at different time scales
-def load_et_region(source_region='TP',scale='year',lc_type='all'):
-    if scale=='year':
+def load_et_region(source_region='TP',scale='ymonmean',lc_type='all'):
+    if scale=='ymonmean':
         dfe = xr.open_dataset('../data/E_2008-2017_GLEAM_v3.5b_ymonmean_360x720_clean.nc')
     if scale=='month':
         dfe = xr.open_dataset('../data/E_2000-2020_GLEAM_v3.5a_MO_360x720_clean.nc')
+    if scale=='year':
+        dfe = xr.open_dataset('../data/E_2000-2020_GLEAM_v3.5a_MO_360x720_clean.nc').resample(time='1Y').sum()
     if source_region=='TP':
-      #  ma_boundary=(dfe.lat>=0) & (dfe.lat<=70.25) & (dfe.lon>=50) & (dfe.lon<=180.25)    
-        etf = et_lc_fraction(lc_type=lc_type) # et fraction for land cover group
+        etf = et_lc_fraction(lc_type=lc_type) # et fraction for land cover group; et_f=1 when lc_type=='all'
         dfe=subset_tb(dfe) * etf # multiple total et by et fraction
     return dfe.E
 
