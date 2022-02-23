@@ -59,7 +59,7 @@ def make_plot(region,time_scale='ymean'):
     ax.set_title(region)
     
     plt.savefig('../figure/fig_%s_%s.png'%(region,time_scale),dpi=300)
-    print('figure saved')
+    print('figure saved succifully')
 
 if __name__ == "__main__":
     make_plot('TP')
