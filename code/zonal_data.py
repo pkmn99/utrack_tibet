@@ -58,14 +58,14 @@ def calculate_zonal(shape_fn, data, affine, name):
 
 # save zonal resutls to csv file
 # precipitation contribution by ET
-def save_zonal_prec_con(source_region='TP',lc_type='all'):
+def save_zonal_prec_con(source_region='TP',lc_type='all',et_data='GLEAM_v3.5a'):
     shape_fn = '../data/shp/China_provinces_with_around_countries.shp'
     af = make_affine()
     re=get_region_list()
     if lc_type=='all':
-        df = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s.nc'%source_region)
+        df = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s.nc'%(source_region,et_data))
     else:
-        df = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s.nc'%(source_region,lc_type))
+        df = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s_%s.nc'%(source_region,lc_type,et_data))
     prec_temp = [calculate_zonal(shape_fn, df.prec[i].values, af, 'prec'+str(i+1)) for i in range(12)]
     
     df_result= pd.DataFrame(prec_temp).transpose()
@@ -74,10 +74,10 @@ def save_zonal_prec_con(source_region='TP',lc_type='all'):
     df_result.loc[:,'precYear']=df_result.iloc[:,0:12].sum(axis=1)
 
     if lc_type=='all':
-        df_result.to_csv('../data/processed/prec_con_mon_%s_zonal.csv'%source_region)
+        df_result.to_csv('../data/processed/prec_con_mon_%s_%s_zonal.csv'%(source_region,et_data))
     else:
-        df_result.to_csv('../data/processed/prec_con_mon_%s_%s_zonal.csv'%(source_region,lc_type))
-    print('zonal results saved for source_region %s and lc_type %s'%(source_region,lc_type))
+        df_result.to_csv('../data/processed/prec_con_mon_%s_%s_%s_zonal.csv'%(source_region,lc_type,et_data))
+    print('zonal results saved for source_region %s and lc_type %s, et_data %s'%(source_region,lc_type,et_data))
 
 # save zonal resutls for prec change induced by et change
 def save_zonal_prec_et(source_region='TP'):
@@ -111,13 +111,13 @@ def save_zonal_prec(source_region='TP'):
     print('zonal results saved')
 
 # calculate in-TP prec contribution
-def intp_con(type='both',source_region='TP',scale='seasonal',lc_type='all'):
+def intp_con(type='both',source_region='TP',scale='seasonal',lc_type='all',et_data='GLEAM_v3.5a'):
     # within-TP contribution
     if lc_type=='all':
-        dpc = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s.nc'%source_region)
+        dpc = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s.nc'%(source_region,et_data))
     else:
-        dpc = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s.nc'%(source_region,lc_type))
-    dp = xr.open_dataset('../data/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
+        dpc = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s_%s.nc'%(source_region,lc_type,et_data))
+    dp = xr.open_dataset('../data/processed/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
     tb=get_tb_mask(scale='TP')
 
     # TP prec seasonal prec contribution 
@@ -140,11 +140,12 @@ def intp_con(type='both',source_region='TP',scale='seasonal',lc_type='all'):
     return temp_pc,temp_p
 
 # create summerized table for TP, subregion, and different 
-def save_table():
+# the et_data option only works for TP all land cover  
+def save_table(et_data='GLEAM_v3.5a'):
     china_list=get_china_list('china')
     
-    ds_tp_abs = load_zonal_prec(type='absolute',time_scale='season',rank=1000)
-    ds_tp_rel = load_zonal_prec(type='relative',time_scale='season',rank=1000)
+    ds_tp_abs = load_zonal_prec(type='absolute',time_scale='season',rank=1000,et_data=et_data)
+    ds_tp_rel = load_zonal_prec(type='relative',time_scale='season',rank=1000,et_data=et_data)
     
     ds_lin = load_zonal_prec(rank=1000,source_region='lindibaohu')
     ds_cao = load_zonal_prec(rank=1000,source_region='caodibaohu')
@@ -173,7 +174,7 @@ def save_table():
 
 
     # within-TP contribution
-    [temp_pc,temp_p]=intp_con()
+    [temp_pc,temp_p]=intp_con(et_data=et_data)
     
    # construct table 4 
     d = {"TP": np.append(temp_pc,np.array(temp_pc)/np.array(temp_p))}
@@ -199,24 +200,32 @@ def save_table():
    # table1.join(table2).join(table3).append(table4,sort=False).append(table5,sort=False) \
    #         .append(table6,sort=False).to_csv('../data/processed/summary_table.csv')
     table1.join(table2).join(table3).append(table4.join(table5).join(table6),sort=False) \
-             .to_csv('../data/processed/summary_table.csv')
-    print('summary table saved')
+             .to_csv('../data/processed/summary_table_%s.csv'%et_data)
+    print('summary table saved; et_data=%s'%et_data)
 
 
 if __name__=="__main__":
 #    save_zonal_prec_con()
 #    save_zonal_prec()
 #    save_zonal_prec_et()
+
 # save zonal for different TP subregions
-#    save_zonal_prec_con(source_region='lindibaohu')
-#    save_zonal_prec_con(source_region='caodibaohu')
-#    save_zonal_prec_con(source_region='shahuazhili')
-#    save_zonal_prec_con(source_region='shuituliushi')
+#    et_data='GLEAM_v3.5a'
+#    save_zonal_prec_con(source_region='lindibaohu',et_data=et_data)
+#    save_zonal_prec_con(source_region='caodibaohu',et_data=et_data)
+#    save_zonal_prec_con(source_region='shahuazhili',et_data=et_data)
+#    save_zonal_prec_con(source_region='shuituliushi',et_data=et_data)
+
+# save for different ET data
+#    save_zonal_prec_con(et_data='MODIS')
+#    save_zonal_prec_con(et_data='ERA5')
 
 # save zonal for different TP land cover groups 
-#    save_zonal_prec_con(lc_type='forest')
-#    save_zonal_prec_con(lc_type='grass')
-#    save_zonal_prec_con(lc_type='shrub')
-#    save_zonal_prec_con(lc_type='baresnow')
-#    save_zonal_prec_con(lc_type='other')
-    save_table()
+#    save_zonal_prec_con(lc_type='forest',et_data=et_data)
+#    save_zonal_prec_con(lc_type='grass',et_data=et_data)
+#    save_zonal_prec_con(lc_type='shrub',et_data=et_data)
+#    save_zonal_prec_con(lc_type='baresnow',et_data=et_data)
+#    save_zonal_prec_con(lc_type='other',et_data=et_data)
+
+    save_table(et_data='MODIS')
+    save_table(et_data='ERA5')
