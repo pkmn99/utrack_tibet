@@ -33,22 +33,19 @@ def set_lat_lon(ax, xtickrange, ytickrange, label=False,pad=0.05, fontsize=8):
     ax.set_ylabel('')
     ax.set_xlabel('')
 
-def plot_map(d, ax, levels, minmax=[],cmap='rainbow'):
+def plot_map(d, ax, levels, minmax=[],cmap='rainbow',extent=[70, 140, 10, 50]):
     # Load geographical data
     tb_shp=shpreader.Reader('../data/shp/DBATP_Polygon.shp')
     china_shp=shpreader.Reader('../data/shp/China_provinces_with_around_countries.shp')
-#    world_shp=shpreader.Reader('../../data/China_gis/ne_110m_admin_0_countries/ne_110m_admin_0_countries.shp')
-#    tb=xr.open_dataset('../data/inputdata/DBATP_f19-touch.nc')
 
     tb_feature = ShapelyFeature(tb_shp.geometries(),
-                                    ccrs.PlateCarree(), facecolor='none',edgecolor='g',linewidth=0.75)
+                                ccrs.PlateCarree(), facecolor='none')
     china_feature = ShapelyFeature(china_shp.geometries(),
-                                    ccrs.PlateCarree(), facecolor='none',edgecolor='k',
-                                   linewidth=0.25)
-    ax.add_feature(tb_feature)
-    ax.add_feature(china_feature)
+                                    ccrs.PlateCarree(), facecolor='none')
+    ax.add_feature(tb_feature,edgecolor='k',linewidth=2)
+    ax.add_feature(china_feature,edgecolor='dimgrey', linewidth=0.5)
 
-    ax.set_extent([70, 140, 10, 50], ccrs.Geodetic())
+    ax.set_extent(extent, ccrs.Geodetic())
 
     d.plot.contourf(cmap=cmap,
                     levels=levels,
@@ -84,11 +81,11 @@ def cal_season(ds,varname='prec'):
 # calculate et relative contribution to prec in different provinces
 # return the top 30
 # Manually edited Kashmir on two csv file to shorten the name
-def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP',lc_type='all'):
+def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP',lc_type='all',et_data='GLEAM_v3.5a'):
     if lc_type=='all':
-        ds = pd.read_csv('../data/processed/prec_con_mon_%s_zonal.csv'%source_region)
+        ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_zonal.csv'%(source_region,et_data))
     else:
-        ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_zonal.csv'%(source_region,lc_type))
+        ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_%s_zonal.csv'%(source_region,lc_type,et_data))
 
     if (type=='absolute')&(time_scale=='year'):
         ds30=ds[['name','precYear']].set_index('name').sort_values(by='precYear',ascending=False)[:rank]
