@@ -38,16 +38,30 @@ def get_china_list(region):
     return re
 
 # plot map for TP extent
-def plot_map_tb(d, ax, levels, minmax=[]):
+def plot_map_tb(d, ax, levels, minmax=[],region='TP'):
     # Load geographical data
     tb_shp=shpreader.Reader('../data/shp/DBATP_Polygon.shp')
+    if region=='lindibaohu':
+        tb_shp2=shpreader.Reader('../../data/Tibet/TP_ecoproject/%s.shp'%region)
+    if region=='caodibaohu':
+        tb_shp2=shpreader.Reader('../../data/Tibet/TP_ecoproject/%s1.shp'%region)
+    if region=='shuituliushi':
+        tb_shp2=shpreader.Reader('../../data/Tibet/TP_ecoproject/%s.shp'%region)
+    if region=='shahuazhili':
+        tb_shp2=shpreader.Reader('../../data/Tibet/TP_ecoproject/%s1.shp'%region)
     tb_feature = ShapelyFeature(tb_shp.geometries(),
-                                    ccrs.PlateCarree(), facecolor='none',edgecolor='g',linewidth=0.75)
-    ax.add_feature(tb_feature)
+                                ccrs.PlateCarree(), facecolor='none')
+    if region=='TP':
+        ax.add_feature(tb_feature,edgecolor='k',linewidth=1)
+        d.plot.contourf(cmap='bwr',
+                        levels=levels,
+                        add_colorbar=False,ax=ax)
+    else:
+        ax.add_feature(tb_feature,edgecolor='k',linewidth=1)
+        tb_feature2 = ShapelyFeature(tb_shp2.geometries(),
+                                     ccrs.PlateCarree(), facecolor='blue')
+        ax.add_feature(tb_feature2,facecolor='blue',alpha=0.5,linewidth=0.75)
     ax.set_extent([72, 105, 25, 40], ccrs.Geodetic())
-    d.plot.contourf(cmap='bwr',
-                    levels=levels,
-                    add_colorbar=False,ax=ax)
 
 def make_plot():
     # ET trends
