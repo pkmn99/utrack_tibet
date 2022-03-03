@@ -5,8 +5,8 @@ import pandas as pd
 """
 Save the cleaned multi-year monthly mean ET data as the output from gdalward break time index
 """
-def save_gleam_et():
-    et = xr.open_dataset('../data/E_2008-2017_GLEAM_v3.5b_ymonmean_360x720.nc')
+def save_gleam_et(et_data='GLEAM_v3.5a',var='E'):
+    et = xr.open_dataset('../data/%s_2008-2017_%s_ymonmean_360x720.nc'%(var,et_data))
     temp = np.dstack([et.Band1.values,
                       et.Band2.values,
                       et.Band3.values,
@@ -26,8 +26,8 @@ def save_gleam_et():
                          dims=['month','lat','lon'],
                          name='E')
     
-    myet.to_netcdf('../data/E_2008-2017_GLEAM_v3.5b_ymonmean_360x720_clean.nc')
-    print('The cleaned GLEAM ET data saved ')
+    myet.to_netcdf('../data/processed/%s_2008-2017_%s_ymonmean_360x720_clean.nc'%(var,et_data))
+    print('The cleaned GLEAM %s data saved %s'%(var,et_data))
 
 # Save monthly cleaned ET for 2000 to 2020 at 0.5 deg
 def save_gleam_et_mon():
@@ -108,13 +108,14 @@ def et_lc_fraction(lc_type='all'):
     return det_lc.values
 
 # load et data values for different land cover groups at different time scales
-def load_et_region(source_region='TP',scale='ymonmean',lc_type='all'):
+# the et_data option for MODIS and EAR5 is limited to ymonmean scale
+def load_et_region(source_region='TP',scale='ymonmean',lc_type='all',et_data='GLEAM_v3.5a',var='E'):
     if scale=='ymonmean':
-        dfe = xr.open_dataset('../data/E_2008-2017_GLEAM_v3.5b_ymonmean_360x720_clean.nc')
+        dfe = xr.open_dataset('../data/processed/%s_2008-2017_%s_ymonmean_360x720_clean.nc'%(var,et_data))
     if scale=='month':
-        dfe = xr.open_dataset('../data/E_2000-2020_GLEAM_v3.5a_MO_360x720_clean.nc')
+        dfe = xr.open_dataset('../data/processed/%s_2000-2020_GLEAM_v3.5a_MO_360x720_clean.nc'%var)
     if scale=='year':
-        dfe = xr.open_dataset('../data/E_2000-2020_GLEAM_v3.5a_MO_360x720_clean.nc').resample(time='1Y').sum()
+        dfe = xr.open_dataset('../data/processed/%s_2000-2020_GLEAM_v3.5a_MO_360x720_clean.nc'%var).resample(time='1Y').sum()
     if source_region=='TP':
         etf = et_lc_fraction(lc_type=lc_type) # et fraction for land cover group; et_f=1 when lc_type=='all'
         dfe=subset_tb(dfe) * etf # multiple total et by et fraction
@@ -142,7 +143,8 @@ def save_et_trend_mon():
 
 
 if __name__=="__main__":
-    save_gleam_et()
+#    save_gleam_et()
+    save_gleam_et(var='Et')
 #    save_gleam_et_mon()
-    save_ChinaForcing_prec()
-    save_et_trend_mon()
+#    save_ChinaForcing_prec()
+#    save_et_trend_mon()

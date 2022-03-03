@@ -93,9 +93,9 @@ def make_subregion_index():
 Calculate ET contribution to total precipitation over the region
 add option for different land cover groups
 """
-def save_prec_contribution(source_region='TP',lc_type='all'):
+def save_prec_contribution(source_region='TP',lc_type='all',et_data='GLEAM_v3.5a'):
     subregion_index=make_subregion_index()
-    dfe = load_et_region(lc_type=lc_type)
+    dfe = load_et_region(lc_type=lc_type,et_data=et_data)
     n_lat, n_lon = dfe.shape[1::]
     pre = np.zeros([12, n_lat, n_lon])
     for i in range(12):
@@ -116,11 +116,11 @@ def save_prec_contribution(source_region='TP',lc_type='all'):
                             dims=['month','lat','lon'],
                             name='prec')
     if lc_type=='all':
-        pre_export.to_netcdf('../data/processed/utrack_climatology_prec_0.5_mon_%s.nc'%(source_region))
+        pre_export.to_netcdf('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s.nc'%(source_region,et_data))
     else:
-        pre_export.to_netcdf('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s.nc'%(source_region,lc_type))
+        pre_export.to_netcdf('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s_%s.nc'%(source_region,lc_type,et_data))
     
-    print('prec contribution file for region %s and lc type %s saved'%(source_region,lc_type))
+    print('prec contribution file for region %s and lc type %s, et_data %s saved'%(source_region,lc_type,et_data))
 
 def save_prec_contribution_by_etrend(source_region='TP'):
     subregion_index=make_subregion_index()
@@ -158,16 +158,20 @@ if __name__=="__main__":
 #    make_region_mask(region='shuituliushi',track_type='source',save_index=True)
 
 # save precipitation contribution for different regions
-#    save_prec_contribution(source_region='TP')
-#    save_prec_contribution(source_region='lindibaohu')
-#    save_prec_contribution(source_region='caodibaohu')
-#    save_prec_contribution(source_region='shahuazhili')
-#    save_prec_contribution(source_region='shuituliushi')
+# save with different et data
+    et_data='GLEAM_v3.5a'
+#    et_data='MODIS'
+#    et_data='ERA5'
+    save_prec_contribution(source_region='TP',et_data=et_data)
+    save_prec_contribution(source_region='lindibaohu',et_data=et_data)
+    save_prec_contribution(source_region='caodibaohu',et_data=et_data)
+    save_prec_contribution(source_region='shahuazhili',et_data=et_data)
+    save_prec_contribution(source_region='shuituliushi',et_data=et_data)
 #    save_prec_contribution_by_etrend()
 
 # save precipitation contribution for different land cover groups 
-#    save_prec_contribution(lc_type='forest')
-    save_prec_contribution(lc_type='shrub')
-    save_prec_contribution(lc_type='grass')
-    save_prec_contribution(lc_type='baresnow')
-    save_prec_contribution(lc_type='other')
+    save_prec_contribution(lc_type='forest',et_data=et_data)
+    save_prec_contribution(lc_type='shrub',et_data=et_data)
+    save_prec_contribution(lc_type='grass',et_data=et_data)
+    save_prec_contribution(lc_type='baresnow',et_data=et_data)
+    save_prec_contribution(lc_type='other',et_data=et_data)
