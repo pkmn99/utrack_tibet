@@ -29,6 +29,11 @@ def make_plot():
     lc_list=[15,16]# bare and snow
     eet_baresnow = dlc_tb.loc[lc_list].sum(dim='class')
 
+    lc_sum=(eet_forest.where(tb_mask).sum()+
+            eet_grass.where(tb_mask).sum()+
+            eet_shrub.where(tb_mask).sum()+
+            eet_baresnow.where(tb_mask).sum())
+
     levels=np.round(np.arange(0,1.01,0.2),1)
     levels2=np.arange(0,6501,500)
 
@@ -68,6 +73,12 @@ def make_plot():
     plot_map_tb(eet_grass.where(tb_mask), ax3,levels)
     plot_map_tb(eet_shrub.where(tb_mask), ax4,levels)
     plot_map_tb(eet_baresnow.where(tb_mask), ax5,levels)
+    
+    # add LC percent
+    ax2.text(0.05,0.1,'%d%%'%(eet_forest.where(tb_mask).sum()/lc_sum*100).values,transform=ax2.transAxes)
+    ax3.text(0.05,0.1,'%d%%'%(eet_grass.where(tb_mask).sum()/lc_sum*100).values,transform=ax3.transAxes)
+    ax4.text(0.05,0.1,'%d%%'%(eet_shrub.where(tb_mask).sum()/lc_sum*100).values,transform=ax4.transAxes)
+    ax5.text(0.05,0.1,'%d%%'%(eet_baresnow.where(tb_mask).sum()/lc_sum*100).values,transform=ax5.transAxes)
     
     # Panel for ecological projects
     plot_map_tb(np.nan, ax6,levels,region='lindibaohu')
@@ -113,7 +124,7 @@ def make_plot():
     fig.text(0.5,0.41,"Ecosystem types",fontsize=14,ha='center')
     fig.text(0.5,0.26,"Ecological projects",fontsize=14,ha='center')
     
-    plt.savefig('../figure/figure_study_area.png',bbox_inches='tight',dpi=300)
+    plt.savefig('../figure/figure_study_area0307.png',bbox_inches='tight',dpi=300)
     print('figure saved')
 
 if __name__=="__main__":
