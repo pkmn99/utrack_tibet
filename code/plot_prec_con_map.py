@@ -9,15 +9,16 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from cartopy.feature import ShapelyFeature
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+from process_et_data import load_prec_region
 
 # # Figure1  abs and relative contribution
 
 # Add lat lon to map figure
-def set_lat_lon(ax, xtickrange, ytickrange, label=False,pad=0.05, fontsize=8):
+def set_lat_lon(ax, xtickrange, ytickrange, label=False,pad=0.05, fontsize=8,pr=ccrs.PlateCarree()):
     lon_formatter = LongitudeFormatter(zero_direction_label=True, degree_symbol='')
     lat_formatter = LatitudeFormatter(degree_symbol='')
-    ax.set_yticks(ytickrange, crs=ccrs.PlateCarree())
-    ax.set_xticks(xtickrange, crs=ccrs.PlateCarree())
+    ax.set_yticks(ytickrange, crs=pr)
+    ax.set_xticks(xtickrange, crs=pr)
     if label:
         ax.set_xticklabels(xtickrange,fontsize=fontsize)
         ax.set_yticklabels(ytickrange,fontsize=fontsize)
@@ -33,23 +34,20 @@ def set_lat_lon(ax, xtickrange, ytickrange, label=False,pad=0.05, fontsize=8):
     ax.set_ylabel('')
     ax.set_xlabel('')
 
-def plot_map(d, ax, levels, minmax=[],cmap='rainbow',extent=[70, 140, 10, 50]):
+def plot_map(d, ax, levels, minmax=[],cmap='rainbow',extent=[70, 140, 10, 50],pr=ccrs.PlateCarree(),
+             lw=2):
     # Load geographical data
     tb_shp=shpreader.Reader('../data/shp/DBATP_Polygon.shp')
     china_shp=shpreader.Reader('../data/shp/China_provinces_with_around_countries.shp')
 
-    tb_feature = ShapelyFeature(tb_shp.geometries(),
-                                ccrs.PlateCarree(), facecolor='none')
-    china_feature = ShapelyFeature(china_shp.geometries(),
-                                    ccrs.PlateCarree(), facecolor='none')
-    ax.add_feature(tb_feature,edgecolor='k',linewidth=2)
+    tb_feature = ShapelyFeature(tb_shp.geometries(), pr, facecolor='none')
+    china_feature = ShapelyFeature(china_shp.geometries(), pr, facecolor='none')
+
     ax.add_feature(china_feature,edgecolor='dimgrey', linewidth=0.5)
+    ax.add_feature(tb_feature,edgecolor='k',linewidth=lw)
+    ax.set_extent(extent,ccrs.Geodetic())
 
-    ax.set_extent(extent, ccrs.Geodetic())
-
-    d.plot.contourf(cmap=cmap,
-                    levels=levels,
-                    add_colorbar=False,ax=ax)
+    d.plot.contourf(cmap=cmap, levels=levels, add_colorbar=False,ax=ax)
 
 # create uneven color levels for maps
 # https://stackoverflow.com/questions/61897393/unevenly-irregularly-spaced-data-for-colorbar-with-evenly-spaced-colors
@@ -81,7 +79,7 @@ def cal_season(ds,varname='prec'):
 # calculate et relative contribution to prec in different provinces
 # return the top 30
 # Manually edited Kashmir on two csv file to shorten the name
-def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP',lc_type='all',et_data='GLEAM_v3.5a'):
+def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP',lc_type='all',et_data='GLEAM_v3.5a',prec_data='ERA5'):
     if lc_type=='all':
         ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_zonal.csv'%(source_region,et_data))
     else:
@@ -93,10 +91,10 @@ def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP
         ds=cal_season(ds)
         ds30=ds[['name','MAM','JJA','SON','DJF','precYear']].set_index('name').sort_values(by='precYear',ascending=False)[:rank]
     if (type=='relative')&(time_scale=='year'):
-        dpz=pd.read_csv('../data/processed/prec_mon_%s_zonal.csv'%source_region)
+        dpz=pd.read_csv('../data/processed/prec_mon_%s_%s_zonal.csv'%(source_region,prec_data))
         ds30 = ((ds.set_index('name')['precYear']/dpz.set_index('name')['precYear']).replace(np.inf,np.nan).sort_values(ascending=False)).dropna().to_frame()[:rank]
     if (type=='relative')&(time_scale=='season'):
-        dpz=pd.read_csv('../data/processed/prec_mon_%s_zonal.csv'%source_region)
+        dpz=pd.read_csv('../data/processed/prec_mon_%s_%s_zonal.csv'%(source_region,prec_data))
         ds=cal_season(ds)
         dpz=cal_season(dpz)
         ds30 = ((ds.set_index('name')[['MAM','JJA','SON','DJF','precYear']] \
@@ -105,27 +103,40 @@ def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP
     return ds30
 
 # calculate et relative contribution to prec 
-def load_prec_conptc():
-    dep=xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP.nc')
-    dp=xr.open_dataset('../data/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
+def load_prec_conptc(prec_data='ERA5',et_data='GLEAM_v3.5a'):
+    dep=xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP_%s.nc'%et_data)
+    if prec_data=='CMFD':
+        dp=xr.open_dataset('../data/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
+    if prec_data=='ERA5':
+        dp=load_prec_region(prec_data=prec_data)
     prec_conpct = dep.prec.sum(dim='month')/dp.prec.sum(dim='month')
     return prec_conpct
 
+# get China mask based CMFD data
+def get_china_mask():
+    p=load_prec_region(prec_data='CMFD')
+    return p.prec.sum(dim='month')>0
 
-def make_plot():
+def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     # load data
-    dp = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP.nc')# prec contribution
-    dpct=load_prec_conptc() # relative prec contribution
-    ds30=load_zonal_prec(type='absolute') # top 30 provincial prec contribution
-    dsr = load_zonal_prec(type='relative') *100 # top 30 provincial prec relative contribution
-    
+    dp = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP_%s.nc'%et_data)# prec contribution
+    dpct=load_prec_conptc(prec_data=prec_data,et_data=et_data) # relative prec contribution
+    ds30=load_zonal_prec(type='absolute',et_data=et_data) # top 30 provincial prec contribution
+    dsr = load_zonal_prec(type='relative',prec_data=prec_data,et_data=et_data) *100 # top 30 provincial prec relative contribution
+    cn_mask=get_china_mask() 
     # create four colors for barchart
     mybincolor1=bin_color(ds30,[0, 10, 50, 100,1000])
     mybincolor2=bin_color(dsr,[0, 2, 5, 20, 1000])
     
     # create levels for maps
-    levels1=[0,1,5,10,20,50,100,200,300,400,500,600]
-    levels2=[0,0.01,0.05,0.1,0.20,0.50,0.8,1]
+    if et_data=='GLEAM_v3.5a':
+        levels1=[0,1,5,10,20,50,100,200,300,400,500]
+    else:
+        levels1=[0,1,5,10,20,50,100,200,300,400,500,600]
+    if prec_data=='ERA5':
+        levels2=[0,0.01,0.05,0.1,0.20,0.40,0.6,0.8]
+    else:
+        levels2=[0,0.01,0.05,0.1,0.20,0.50,0.8,1]
     
     # create uneven levels for cmap for maps
     mycmap1,mynorm1=uneven_cmap(levels1) # for panel a
@@ -140,7 +151,7 @@ def make_plot():
     # only plot regions with prec contribution > 1 mm
     ma=dp['prec'].sum(dim='month')>1 
     
-    plot_map(dp['prec'].sum(dim='month').where(ma), ax1, levels1)
+    plot_map(dp['prec'].sum(dim='month').where(ma), ax1, levels1, lw=1)
     set_lat_lon(ax1, range(70,140,20), range(10,51,20), label=True, pad=0.05, fontsize=10)
     
     # Add colorbar to big plot
@@ -166,7 +177,7 @@ def make_plot():
     ax3 = fig.add_axes([0.075, 0.075, 0.4, 0.4], projection=ccrs.PlateCarree(),
                                          frameon=False)
     
-    plot_map(dpct, ax3,levels2)
+    plot_map(dpct.where(cn_mask), ax3,levels2, lw=1)
     set_lat_lon(ax3, range(70,140,20), range(10,51,20), label=True, pad=0.05, fontsize=10)
     
     # Add colorbar to big plot
@@ -193,7 +204,7 @@ def make_plot():
     plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.125)
     plot_subplot_label(ax4, 'd', left_offset=-0.05,upper_offset=0.05)
     
-    plt.savefig('../figure/figure_prec_con_map0209.png',dpi=300)
+    plt.savefig('../figure/figure_prec_con_map_%s_%s_0321.png'%(prec_data,et_data),dpi=300)
     print('figure saved')
    
 if __name__=="__main__":
