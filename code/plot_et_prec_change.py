@@ -38,7 +38,7 @@ def get_china_list(region):
     return re
 
 # plot map for TP extent
-def plot_map_tb(d, ax, levels, minmax=[],region='TP'):
+def plot_map_tb(d, ax, levels, minmax=[],region='TP',pr=ccrs.PlateCarree(),cmap='bwr'):
     # Load geographical data
     tb_shp=shpreader.Reader('../data/shp/DBATP_Polygon.shp')
     if region=='lindibaohu':
@@ -49,19 +49,16 @@ def plot_map_tb(d, ax, levels, minmax=[],region='TP'):
         tb_shp2=shpreader.Reader('../../data/Tibet/TP_ecoproject/%s.shp'%region)
     if region=='shahuazhili':
         tb_shp2=shpreader.Reader('../../data/Tibet/TP_ecoproject/%s1.shp'%region)
-    tb_feature = ShapelyFeature(tb_shp.geometries(),
-                                ccrs.PlateCarree(), facecolor='none')
+    tb_feature = ShapelyFeature(tb_shp.geometries(), pr, facecolor='none')
     if region=='TP':
         ax.add_feature(tb_feature,edgecolor='k',linewidth=1)
-        d.plot.contourf(cmap='bwr',
-                        levels=levels,
-                        add_colorbar=False,ax=ax)
+        d.plot.contourf(cmap=cmap, levels=levels, add_colorbar=False,ax=ax)
     else:
         ax.add_feature(tb_feature,edgecolor='k',linewidth=1)
-        tb_feature2 = ShapelyFeature(tb_shp2.geometries(),
-                                     ccrs.PlateCarree(), facecolor='blue')
+        tb_feature2 = ShapelyFeature(tb_shp2.geometries(), pr, facecolor='blue')
         ax.add_feature(tb_feature2,facecolor='blue',alpha=0.5,linewidth=0.75)
     ax.set_extent([72, 105, 25, 40], ccrs.Geodetic())
+   # ax.set_extent([72, 105, 25, 40], crs=pr)
 
 def make_plot():
     # ET trends
@@ -98,7 +95,7 @@ def make_plot():
                                                 frameon=False)
     plot_map_tb(det.E_trend.sum(dim='month'), ax1, levels1)
     set_lat_lon(ax1, range(75,105,10), range(25,40,10), label=True, pad=0.05, fontsize=10)
-    ax1.set_title('ET trends',fontsize=12)
+    ax1.set_title('ET trends in TP',fontsize=12)
     
     # Add colorbar to big plot
     cbarbig1_pos = [ax1.get_position().x0, ax1.get_position().y0-0.03, ax1.get_position().width, 0.02]
@@ -118,7 +115,7 @@ def make_plot():
     ax2.set_ylim([260,325])
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
-    ax2.set_title('ET changes in TP',fontsize=12)
+    ax2.set_title('ET trends in TP',fontsize=12)
 
     # inset bar chart for ET monthly trend 
     ax2b = fig.add_axes([0.77, 0.55, 0.15, 0.125], frameon=True)
@@ -138,10 +135,10 @@ def make_plot():
     # due to the mismatch between color interval of contouf and functiion uneven_colors
     # uneven_colors return -1 colors with respect to levels; conturnf draws all levels, with default settings
     # use levels-1 to plot and levels for colorbar
-    plot_map(dp.prec.sum(dim='month'), ax3, levels2[0:-1],cmap='bwr')
+    plot_map(dp.prec.sum(dim='month'), ax3, levels2[0:-1],cmap='bwr',lw=1)
     set_lat_lon(ax3, range(70,140,20), range(10,51,20), label=True, pad=0.05, fontsize=10)
     
-    ax3.set_title('ET-induced precipitation changes',fontsize=12)
+    ax3.set_title('ET-induced changes in precipitation contribution',fontsize=12)
     
     # Add colorbar to big plot
     cbarbig3_pos = [ax3.get_position().x0, ax3.get_position().y0-0.03, ax3.get_position().width, 0.02]
@@ -150,15 +147,17 @@ def make_plot():
     cbbig3 = mpl.colorbar.ColorbarBase(ax=caxbig3, cmap=mycmap2, norm=mynorm2, orientation='horizontal',
                                       ticks=levels2)
     cbbig3.ax.set_xticklabels(levels2,fontsize=10)
-    cbbig3.set_label('Precipitation change (mm)')
+    cbbig3.set_label('Precipitation contribution changes (mm)')
     
     # ################ Panel d: ET induced prec change by region
-    ax4 = fig.add_axes([0.525, 0.125, 0.4, 0.3],frameon=False)
+    ax4 = fig.add_axes([0.525, 0.125, 0.4, 0.3],frameon=True)
     
     ds_etp.plot(kind='bar',ax=ax4, legend=False)
-    ax4.set_ylabel('Precipitation change (mm)')
+    ax4.set_ylabel('Precipitation contribution changes (mm)')
     ax4.set_xlabel('')
-    ax4.set_title('ET-induced precipitation changes by province',fontsize=12)
+    ax4.set_title('ET-induced changes in precipitation contribution',fontsize=12)
+    ax4.spines['top'].set_visible(False)
+    ax4.spines['right'].set_visible(False)
     
     # panel label
     plot_subplot_label(ax1, 'a', left_offset=-0.1, upper_offset=0.15)
@@ -166,7 +165,7 @@ def make_plot():
     plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.1)
     plot_subplot_label(ax4, 'd', left_offset=-0.15,upper_offset=0)
     
-    plt.savefig('../figure/figure_et_prec_change_0221.png',dpi=300,bbox_inches='tight')
+    plt.savefig('../figure/figure_et_prec_change_0310.png',dpi=300,bbox_inches='tight')
     print('figure saved')
 
 if __name__=="__main__":
