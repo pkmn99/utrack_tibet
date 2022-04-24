@@ -1,6 +1,7 @@
 import xarray as xr
 import pandas as pd
 import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib as mpl
@@ -60,6 +61,30 @@ def plot_map_tb(d, ax, levels, minmax=[],region='TP',pr=ccrs.PlateCarree(),cmap=
     ax.set_extent([72, 105, 25, 40], ccrs.Geodetic())
    # ax.set_extent([72, 105, 25, 40], crs=pr)
 
+# load zonal changes in prec contribution due to ET
+def load_zonal_prec_con_change():
+    # zonal prec contribution
+    ds=pd.read_csv('../data/processed/prec_change_by_et_mon_TP_zonal.csv')
+    china_list=get_china_list('china')
+    # only china
+    ds_etp=ds.set_index('name').reindex(china_list)['precYear'].sort_values(ascending=False).to_frame()
+    # attach region
+    northwest=['Shaanxi','Gansu','Qinghai','Ningxia','Xinjiang']
+    north=['Beijing','Tianjin','Hebei','Shanxi','Neimeng']
+    northeast=['Liaoning','Jilin','Heilongjiang']
+    east=['Shanghai','Jiangsu','Zhejiang','Anhui','Fujian','Jiangxi','Shandong','Taiwan']
+    central_south=['Henan','Hubei','Hunan','Guangdong','Guangxi','Hainan','Hongkong']# ,'Macao'
+    southwest=['Chongqing','Sichuan','Guizhou','Yunnan','Xizang']
+
+    ds_etp.loc[northwest,'Region']='northwest'
+    ds_etp.loc[north,'Region']='north'
+    ds_etp.loc[northeast,'Region']='northeast'
+    ds_etp.loc[east,'Region']='east'
+    ds_etp.loc[central_south,'Region']='central_south'
+    ds_etp.loc[southwest,'Region']='southwest'
+    ds_etp.loc[ds_etp['Region'].isnull(),'Region']='international'
+    return ds_etp
+
 def make_plot():
     # ET trends
     det=xr.open_dataset('../data/processed/Etrend_2000-2020_GLEAM_v3.5a_TP_mon.nc')
@@ -67,11 +92,12 @@ def make_plot():
     # prec contribution
     dp = xr.open_dataset('../data/processed/prec_change_by_et_change_2000-2020_TP.nc')
     
-    # zonal prec contribution
-    ds=pd.read_csv('../data/processed/prec_change_by_et_mon_TP_zonal.csv')
-    china_list=get_china_list('china')
-    # only china
-    ds_etp=ds.set_index('name').reindex(china_list)['precYear'].sort_values(ascending=False)
+#    # zonal prec contribution
+#    ds=pd.read_csv('../data/processed/prec_change_by_et_mon_TP_zonal.csv')
+#    china_list=get_china_list('china')
+#    # only china
+#    ds_etp=ds.set_index('name').reindex(china_list)['precYear'].sort_values(ascending=False)
+    ds_etp=load_zonal_prec_con_change()
 
     # ET yearly data
     dety = load_et_region(scale='year')
@@ -152,7 +178,9 @@ def make_plot():
     # ################ Panel d: ET induced prec change by region
     ax4 = fig.add_axes([0.525, 0.125, 0.4, 0.3],frameon=True)
     
-    ds_etp.plot(kind='bar',ax=ax4, legend=False)
+#    ds_etp.plot(kind='bar',ax=ax4, legend=False)
+    sns.barplot(x="name", y="precYear", hue="Region", data=ds_etp.reset_index(), dodge=False, ax=ax4)
+    ax4.set_xticklabels(ax4.get_xticklabels(),rotation=90)
     ax4.set_ylabel('Precipitation contribution changes (mm)')
     ax4.set_xlabel('')
     ax4.set_title('ET-induced changes in precipitation contribution',fontsize=12)
@@ -165,7 +193,7 @@ def make_plot():
     plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.1)
     plot_subplot_label(ax4, 'd', left_offset=-0.15,upper_offset=0)
     
-    plt.savefig('../figure/figure_et_prec_change_0310.png',dpi=300,bbox_inches='tight')
+    plt.savefig('../figure/figure_et_prec_change_0424.png',dpi=300,bbox_inches='tight')
     print('figure saved')
 
 if __name__=="__main__":
