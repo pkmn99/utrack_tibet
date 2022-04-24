@@ -1,6 +1,7 @@
 import xarray as xr
 import pandas as pd
 import numpy as np
+import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib as mpl
@@ -79,25 +80,43 @@ def cal_season(ds,varname='prec'):
 # calculate et relative contribution to prec in different provinces
 # return the top 30
 # Manually edited Kashmir on two csv file to shorten the name
-def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP',lc_type='all',et_data='GLEAM_v3.5a',prec_data='ERA5'):
+def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP',lc_type='all',et_data='GLEAM_v3.5a',prec_data='ERA5',attach_region=False):
     if lc_type=='all':
-        ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_zonal.csv'%(source_region,et_data))
+        ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_zonal.csv'%(source_region,et_data)).set_index('name')
     else:
-        ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_%s_zonal.csv'%(source_region,lc_type,et_data))
+        ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_%s_zonal.csv'%(source_region,lc_type,et_data)).set_index('name')
+
+    if attach_region:
+        northwest=['Shaanxi','Gansu','Qinghai','Ningxia','Xinjiang']
+        north=['Beijing','Tianjin','Hebei','Shanxi','Neimeng']
+        northeast=['Liaoning','Jilin','Heilongjiang']
+        east=['Shanghai','Jiangsu','Zhejiang','Anhui','Fujian','Jiangxi','Shandong','Taiwan']
+        central_south=['Henan','Hubei','Hunan','Guangdong','Guangxi','Hainan','Hongkong']# ,'Macao'
+        southwest=['Chongqing','Sichuan','Guizhou','Yunnan','Xizang']
+
+        ds.loc[northwest,'Region']='northwest'
+        ds.loc[north,'Region']='north'
+        ds.loc[northeast,'Region']='northeast'
+        ds.loc[east,'Region']='east'
+        ds.loc[central_south,'Region']='central_south'
+        ds.loc[southwest,'Region']='southwest'
+        ds.loc[ds['Region'].isnull(),'Region']='international'
 
     if (type=='absolute')&(time_scale=='year'):
-        ds30=ds[['name','precYear']].set_index('name').sort_values(by='precYear',ascending=False)[:rank]
+        ds30=ds[['precYear','Region']].sort_values(by='precYear',ascending=False)[:rank]
     if (type=='absolute')&(time_scale=='season'):
         ds=cal_season(ds)
-        ds30=ds[['name','MAM','JJA','SON','DJF','precYear']].set_index('name').sort_values(by='precYear',ascending=False)[:rank]
+        ds30=ds[['MAM','JJA','SON','DJF','precYear']].sort_values(by='precYear',ascending=False)[:rank]
     if (type=='relative')&(time_scale=='year'):
         dpz=pd.read_csv('../data/processed/prec_mon_%s_%s_zonal.csv'%(source_region,prec_data))
-        ds30 = ((ds.set_index('name')['precYear']/dpz.set_index('name')['precYear']).replace(np.inf,np.nan).sort_values(ascending=False)).dropna().to_frame()[:rank]
+        ds30 = ((ds['precYear']/dpz.set_index('name')['precYear']*100).replace(np.inf,np.nan).sort_values(ascending=False)).dropna()[:rank]
+        ds30 = pd.concat([ds30,ds['Region']],join='inner',axis=1)
+
     if (type=='relative')&(time_scale=='season'):
         dpz=pd.read_csv('../data/processed/prec_mon_%s_%s_zonal.csv'%(source_region,prec_data))
         ds=cal_season(ds)
         dpz=cal_season(dpz)
-        ds30 = ((ds.set_index('name')[['MAM','JJA','SON','DJF','precYear']] \
+        ds30 = ((ds[['MAM','JJA','SON','DJF','precYear']] \
                  /dpz.set_index('name')[['MAM','JJA','SON','DJF','precYear']]) \
                 .replace(np.inf,np.nan).sort_values(by='precYear',ascending=False)).dropna()[:rank]
     return ds30
@@ -121,12 +140,14 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     # load data
     dp = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP_%s.nc'%et_data)# prec contribution
     dpct=load_prec_conptc(prec_data=prec_data,et_data=et_data) # relative prec contribution
-    ds30=load_zonal_prec(type='absolute',et_data=et_data) # top 30 provincial prec contribution
-    dsr = load_zonal_prec(type='relative',prec_data=prec_data,et_data=et_data) *100 # top 30 provincial prec relative contribution
-    cn_mask=get_china_mask() 
+    ds30=load_zonal_prec(type='absolute',et_data=et_data,attach_region=True) # top 30 provincial prec contribution
+    dsr = load_zonal_prec(type='relative',prec_data=prec_data,et_data=et_data,attach_region=True)# top 30 provincial prec relative contribution
+
+    cn_mask=get_china_mask()
+
     # create four colors for barchart
-    mybincolor1=bin_color(ds30,[0, 10, 50, 100,1000])
-    mybincolor2=bin_color(dsr,[0, 2, 5, 20, 1000])
+#    mybincolor1=bin_color(ds30,[0, 10, 50, 100,1000])
+#    mybincolor2=bin_color(dsr,[0, 2, 5, 20, 1000])
     
     # create levels for maps
     if et_data=='GLEAM_v3.5a':
@@ -166,7 +187,11 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     ######################### Panel B: precipitation contribution in different provinces
     ax2 = fig.add_axes([0.575, 0.6, 0.4, 0.325],frameon=True)
     
-    ds30.plot(kind='bar', color=mybincolor1, ax=ax2, legend=False, edgecolor='k',linewidth=0.75)
+   # ds30.plot(kind='bar', color=mybincolor1, ax=ax2, legend=False, edgecolor='k',linewidth=0.75)
+
+    sns.barplot(x="name", y="precYear", hue="Region", data=ds30.reset_index(), dodge=False, ax=ax2)
+
+    ax2.set_xticklabels(ax2.get_xticklabels(),rotation=90)
     ax2.set_ylabel('Precipitation contribution (mm)')
     ax2.set_xlabel('')
     ax2.spines['top'].set_visible(False)
@@ -192,7 +217,10 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     ################### Panel D: relative precipitation contribution in different provinces
     ax4 = fig.add_axes([0.575, 0.125, 0.4, 0.325],frameon=True)
     
-    dsr.plot(kind='bar', color=mybincolor2, ax=ax4, legend=False, edgecolor='k',linewidth=0.75)
+   # dsr.plot(kind='bar', color=mybincolor2, ax=ax4, legend=False, edgecolor='k',linewidth=0.75)
+    sns.barplot(x="name", y="precYear", hue="Region", data=dsr.reset_index(), dodge=False, ax=ax4)
+
+    ax4.set_xticklabels(ax4.get_xticklabels(),rotation=90)
     ax4.set_ylabel('Precipitation contribution (%)')
     ax4.set_xlabel('')
     ax4.spines['top'].set_visible(False)
@@ -204,8 +232,8 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.125)
     plot_subplot_label(ax4, 'd', left_offset=-0.05,upper_offset=0.05)
     
-    plt.savefig('../figure/figure_prec_con_map_%s_%s_0321.png'%(prec_data,et_data),dpi=300)
+    plt.savefig('../figure/figure_prec_con_map_%s_%s_0424.png'%(prec_data,et_data),dpi=300)
     print('figure saved')
    
 if __name__=="__main__":
-    make_plot()
+    make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a')
