@@ -69,10 +69,10 @@ def make_plot():
     # # gs[3:5, 1:3], projection=ccrs.LambertConformal()
     
     # Panel for LC types 
-    plot_map_tb(eet_forest.where(tb_mask), ax2,levels)
-    plot_map_tb(eet_grass.where(tb_mask), ax3,levels)
-    plot_map_tb(eet_shrub.where(tb_mask), ax4,levels)
-    plot_map_tb(eet_baresnow.where(tb_mask), ax5,levels)
+    plot_map_tb(eet_forest.where(tb_mask), ax2,levels, cmap='Blues')
+    plot_map_tb(eet_grass.where(tb_mask), ax3,levels, cmap='Blues')
+    plot_map_tb(eet_shrub.where(tb_mask), ax4,levels, cmap='Blues')
+    plot_map_tb(eet_baresnow.where(tb_mask), ax5,levels, cmap='Blues')
     
     # add LC percent
     ax2.text(0.05,0.1,'%d%%'%(eet_forest.where(tb_mask).sum()/lc_sum*100).values,transform=ax2.transAxes)
@@ -89,7 +89,7 @@ def make_plot():
     ax2.set_title('Forest')
     ax3.set_title('Grass')
     ax4.set_title('Shrub')
-    ax5.set_title('Bare and snow')
+    ax5.set_title('Barren and snow')
     
     ax6.set_title('Forest protection')
     ax7.set_title('Grass protection')
@@ -110,7 +110,7 @@ def make_plot():
                          a.get_position().height])
         
     # Add colorbar panel LC
-    cmap2,norm2=uneven_cmap(levels,cmap='bwr')
+    cmap2,norm2=uneven_cmap(levels,cmap='Blues')
     cbar2_pos = [ax5.get_position().x1 +.02, ax5.get_position().y0, 
                  0.02, ax5.get_position().height]
     cax2 = fig.add_axes(cbar2_pos)
@@ -122,9 +122,9 @@ def make_plot():
 
 
     fig.text(0.5,0.41,"Ecosystem types",fontsize=14,ha='center')
-    fig.text(0.5,0.26,"Ecological projects",fontsize=14,ha='center')
+    fig.text(0.5,0.26,"Ecological project areas",fontsize=14,ha='center')
     
-    plt.savefig('../figure/figure_study_area0307.png',bbox_inches='tight',dpi=300)
+    plt.savefig('../figure/figure_study_area0509.png',bbox_inches='tight',dpi=300)
     print('figure saved')
 
 if __name__=="__main__":
