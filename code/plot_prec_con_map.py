@@ -35,7 +35,7 @@ def set_lat_lon(ax, xtickrange, ytickrange, label=False,pad=0.05, fontsize=8,pr=
     ax.set_ylabel('')
     ax.set_xlabel('')
 
-def plot_map(d, ax, levels, minmax=[],cmap='rainbow',extent=[70, 140, 10, 50],pr=ccrs.PlateCarree(),
+def plot_map(d, ax, levels, minmax=[],cmap='rainbow_r',extent=[70, 140, 10, 50],pr=ccrs.PlateCarree(),
              lw=2):
     # Load geographical data
     tb_shp=shpreader.Reader('../data/shp/DBATP_Polygon.shp')
@@ -52,7 +52,7 @@ def plot_map(d, ax, levels, minmax=[],cmap='rainbow',extent=[70, 140, 10, 50],pr
 
 # create uneven color levels for maps
 # https://stackoverflow.com/questions/61897393/unevenly-irregularly-spaced-data-for-colorbar-with-evenly-spaced-colors
-def uneven_cmap(levels,cmap='rainbow'):
+def uneven_cmap(levels,cmap='rainbow_r'):
     cmap_rb = plt.get_cmap(cmap)
     colors = cmap_rb(np.linspace(0, 1, len(levels) - 1))
     mycmap, mynorm = mcolors.from_levels_and_colors(levels, colors)
@@ -101,9 +101,12 @@ def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP
         ds.loc[central_south,'Region']='central_south'
         ds.loc[southwest,'Region']='southwest'
         ds.loc[ds['Region'].isnull(),'Region']='international'
+        col_txt=['precYear','Region']
+    else:
+        col_txt=['precYear']
 
     if (type=='absolute')&(time_scale=='year'):
-        ds30=ds[['precYear','Region']].sort_values(by='precYear',ascending=False)[:rank]
+        ds30=ds[col_txt].sort_values(by='precYear',ascending=False)[:rank]
     if (type=='absolute')&(time_scale=='season'):
         ds=cal_season(ds)
         ds30=ds[['MAM','JJA','SON','DJF','precYear']].sort_values(by='precYear',ascending=False)[:rank]
@@ -160,8 +163,8 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
         levels2=[0,0.01,0.05,0.1,0.20,0.50,0.8,1]
     
     # create uneven levels for cmap for maps
-    mycmap1,mynorm1=uneven_cmap(levels1) # for panel a
-    mycmap2,mynorm2=uneven_cmap(levels2) # for panel c
+    mycmap1,mynorm1=uneven_cmap(levels1,cmap='YlGnBu') # for panel a
+    mycmap2,mynorm2=uneven_cmap(levels2,cmap='YlGnBu') # for panel c
     
     
     ###########Panel A
@@ -172,7 +175,7 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     # only plot regions with prec contribution > 1 mm
     ma=dp['prec'].sum(dim='month')>1 
     
-    plot_map(dp['prec'].sum(dim='month').where(ma), ax1, levels1, lw=1)
+    plot_map(dp['prec'].sum(dim='month').where(ma), ax1, levels1, lw=1,cmap='YlGnBu')
     set_lat_lon(ax1, range(70,140,20), range(10,51,20), label=True, pad=0.05, fontsize=10)
     
     # Add colorbar to big plot
@@ -182,7 +185,7 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     cbbig1 = mpl.colorbar.ColorbarBase(ax=caxbig1, cmap=mycmap1, norm=mynorm1, orientation='horizontal',
                                       ticks=levels1)
     cbbig1.ax.set_yticklabels(levels1,fontsize=10)
-    cbbig1.set_label('Precipitation contribution (mm)')
+    cbbig1.set_label('Precipitation contribution (mm/year)')
     
     ######################### Panel B: precipitation contribution in different provinces
     ax2 = fig.add_axes([0.575, 0.6, 0.4, 0.325],frameon=True)
@@ -192,7 +195,7 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     sns.barplot(x="name", y="precYear", hue="Region", data=ds30.reset_index(), dodge=False, ax=ax2)
 
     ax2.set_xticklabels(ax2.get_xticklabels(),rotation=90)
-    ax2.set_ylabel('Precipitation contribution (mm)')
+    ax2.set_ylabel('Precipitation contribution (mm/year)')
     ax2.set_xlabel('')
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
@@ -202,7 +205,7 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     ax3 = fig.add_axes([0.075, 0.075, 0.4, 0.4], projection=ccrs.PlateCarree(),
                                          frameon=False)
     
-    plot_map(dpct.where(cn_mask), ax3,levels2, lw=1)
+    plot_map(dpct.where(cn_mask), ax3,levels2, lw=1,cmap='YlGnBu')
     set_lat_lon(ax3, range(70,140,20), range(10,51,20), label=True, pad=0.05, fontsize=10)
     
     # Add colorbar to big plot
@@ -232,7 +235,7 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.125)
     plot_subplot_label(ax4, 'd', left_offset=-0.05,upper_offset=0.05)
     
-    plt.savefig('../figure/figure_prec_con_map_%s_%s_0424.png'%(prec_data,et_data),dpi=300)
+    plt.savefig('../figure/figure_prec_con_map_%s_%s_0509.png'%(prec_data,et_data),dpi=300)
     print('figure saved')
    
 if __name__=="__main__":
