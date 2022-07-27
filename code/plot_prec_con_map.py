@@ -79,7 +79,7 @@ def cal_season(ds,varname='prec'):
 
 # calculate et relative contribution to prec in different provinces
 # return the top 30
-# Manually edited Kashmir on two csv file to shorten the name
+# May need to manually edit Kashmir on two csv file to shorten the name
 def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP',lc_type='all',et_data='GLEAM_v3.5a',prec_data='ERA5',attach_region=False):
     if lc_type=='all':
         ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_zonal.csv'%(source_region,et_data)).set_index('name')
@@ -98,7 +98,7 @@ def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP
         ds.loc[north,'Region']='north'
         ds.loc[northeast,'Region']='northeast'
         ds.loc[east,'Region']='east'
-        ds.loc[central_south,'Region']='central_south'
+        ds.loc[central_south,'Region']='south'
         ds.loc[southwest,'Region']='southwest'
         ds.loc[ds['Region'].isnull(),'Region']='international'
         col_txt=['precYear','Region']
@@ -147,10 +147,6 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     dsr = load_zonal_prec(type='relative',prec_data=prec_data,et_data=et_data,attach_region=True)# top 30 provincial prec relative contribution
 
     cn_mask=get_china_mask()
-
-    # create four colors for barchart
-#    mybincolor1=bin_color(ds30,[0, 10, 50, 100,1000])
-#    mybincolor2=bin_color(dsr,[0, 2, 5, 20, 1000])
     
     # create levels for maps
     if et_data=='GLEAM_v3.5a':
@@ -162,12 +158,13 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     else:
         levels2=[0,0.01,0.05,0.1,0.20,0.50,0.8,1]
     
-    # create uneven levels for cmap for maps
+    # create uneven levels cmaps for maps
     mycmap1,mynorm1=uneven_cmap(levels1,cmap='YlGnBu') # for panel a
     mycmap2,mynorm2=uneven_cmap(levels2,cmap='YlGnBu') # for panel c
+    # order of Chian division 
+    region_list=['northwest','southwest','north','south','east','northeast','international']
     
-    
-    ###########Panel A
+    ###########Panel A: Map of abosulte contribution
     fig = plt.figure(figsize=[10,8])
     ax1 = fig.add_axes([0.075, 0.55, 0.4, 0.4], projection=ccrs.PlateCarree(),
                                          frameon=False)
@@ -182,25 +179,35 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     cbarbig1_pos = [ax1.get_position().x0, ax1.get_position().y0-0.03, ax1.get_position().width, 0.02]
     caxbig1 = fig.add_axes(cbarbig1_pos)
     
-    cbbig1 = mpl.colorbar.ColorbarBase(ax=caxbig1, cmap=mycmap1, norm=mynorm1, orientation='horizontal',
-                                      ticks=levels1)
+    cbbig1 = mpl.colorbar.ColorbarBase(ax=caxbig1, cmap=mycmap1, norm=mynorm1,
+            orientation='horizontal', ticks=levels1)
     cbbig1.ax.set_yticklabels(levels1,fontsize=10)
     cbbig1.set_label('Precipitation contribution (mm/year)')
     
     ######################### Panel B: precipitation contribution in different provinces
     ax2 = fig.add_axes([0.575, 0.6, 0.4, 0.325],frameon=True)
-    
-   # ds30.plot(kind='bar', color=mybincolor1, ax=ax2, legend=False, edgecolor='k',linewidth=0.75)
-
-    sns.barplot(x="name", y="precYear", hue="Region", data=ds30.reset_index(), dodge=False, ax=ax2)
+    sns.barplot(x="name", y="precYear", hue="Region", hue_order=region_list,
+                data=ds30.reset_index(), dodge=False, ax=ax2)
 
     ax2.set_xticklabels(ax2.get_xticklabels(),rotation=90)
     ax2.set_ylabel('Precipitation contribution (mm/year)')
     ax2.set_xlabel('')
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
-    
-    
+
+    # Inset to show China region division
+    ax2inset = fig.add_axes([0.65, 0.75, 0.15, 0.125], projection=ccrs.PlateCarree(),
+                                                       frame_on=False)
+    ax2inset.outline_patch.set_visible(False) # Turn off borader
+
+    # Load geographical data
+    for i,r in enumerate(['西北','西南','华北','华南','East','东北']):
+        china_shp=shpreader.Reader('/media/liyan/HDD/Project/data/China_gis/七大分区/%s.shp'%r)
+        china_feature = ShapelyFeature(china_shp.geometries(), ccrs.PlateCarree(), facecolor=sns.color_palette()[i])
+        ax2inset.add_feature(china_feature,edgecolor='w', linewidth=0.1)
+
+    ax2inset.set_extent([70, 140, 10, 50],ccrs.Geodetic())
+
     ###################### Panel C: relative contribution map
     ax3 = fig.add_axes([0.075, 0.075, 0.4, 0.4], projection=ccrs.PlateCarree(),
                                          frameon=False)
@@ -212,16 +219,16 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     cbarbig2_pos = [ax3.get_position().x0, ax3.get_position().y0-0.03, ax3.get_position().width, 0.02]
     caxbig2 = fig.add_axes(cbarbig2_pos)
     
-    cbbig2 = mpl.colorbar.ColorbarBase(ax=caxbig2, cmap=mycmap2, norm=mynorm2, orientation='horizontal',
-                                      ticks=levels2)
+    cbbig2 = mpl.colorbar.ColorbarBase(ax=caxbig2, cmap=mycmap2, norm=mynorm2, 
+                                       orientation='horizontal', ticks=levels2)
     cbbig2.ax.set_xticklabels((np.array(levels2)*100).astype(np.int),fontsize=10)
     cbbig2.set_label('Precipitation contribution (%)')
     
     ################### Panel D: relative precipitation contribution in different provinces
     ax4 = fig.add_axes([0.575, 0.125, 0.4, 0.325],frameon=True)
     
-   # dsr.plot(kind='bar', color=mybincolor2, ax=ax4, legend=False, edgecolor='k',linewidth=0.75)
-    sns.barplot(x="name", y="precYear", hue="Region", data=dsr.reset_index(), dodge=False, ax=ax4)
+    sns.barplot(x="name", y="precYear", hue="Region", hue_order=region_list,
+                data=dsr.reset_index(), dodge=False, ax=ax4)
 
     ax4.set_xticklabels(ax4.get_xticklabels(),rotation=90)
     ax4.set_ylabel('Precipitation contribution (%)')
@@ -235,7 +242,7 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.125)
     plot_subplot_label(ax4, 'd', left_offset=-0.05,upper_offset=0.05)
     
-    plt.savefig('../figure/figure_prec_con_map_%s_%s_0509.png'%(prec_data,et_data),dpi=300)
+    plt.savefig('../figure/figure_prec_con_map_%s_%s_0726.png'%(prec_data,et_data),dpi=300)
     print('figure saved')
    
 if __name__=="__main__":
