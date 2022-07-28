@@ -110,16 +110,16 @@ def make_plot():
     
     # create levels for map
     levels1=[-6,-4,-2,-1,-0.5, -0.25, 0.25, 0.5,1,2,4,6]
-    mycmap1,mynorm1=uneven_cmap(levels1,cmap='bwr') # for panel a
+    mycmap1,mynorm1=uneven_cmap(levels1,cmap='bwr_r') # for panel a
     
     levels2=[-50,-40,-20,-10,-5,-2,-1,-0.25,0.25,1,2,5,10,20,40,50]
-    mycmap2,mynorm2=uneven_cmap(levels2,cmap='bwr') # for panel b
+    mycmap2,mynorm2=uneven_cmap(levels2,cmap='bwr_r') # for panel b
     
     #################### Panel a: ET regional trend
     fig = plt.figure(figsize=[10,8.5])
     ax1 = fig.add_axes([0.035, 0.475, 0.4, 0.4], projection=ccrs.PlateCarree(),
                                                 frameon=False)
-    plot_map_tb(det.E_trend.sum(dim='month'), ax1, levels1)
+    plot_map_tb(det.E_trend.sum(dim='month'), ax1, levels1,cmap='bwr_r')
     set_lat_lon(ax1, range(75,105,10), range(25,40,10), label=True, pad=0.05, fontsize=10)
     ax1.set_title('ET trends in TP',fontsize=12)
     
@@ -130,13 +130,13 @@ def make_plot():
     cbbig1 = mpl.colorbar.ColorbarBase(ax=caxbig1, cmap=mycmap1, norm=mynorm1, orientation='horizontal',
                                       ticks=levels1)
     cbbig1.ax.set_xticklabels(levels1,fontsize=10)
-    cbbig1.set_label('ET trend (mm/year)')
+    cbbig1.set_label('ET trend (mm/year/year)')
 
     ################### Panel b: ET time series and monthly trend
     # ET yearly change over TP
     ax2 = fig.add_axes([0.525, 0.525, 0.4, 0.3], frameon=True)
     et_year.to_pandas().plot(ax=ax2)
-    ax2.set_ylabel('ET (mm)')
+    ax2.set_ylabel('ET (mm/year)')
     ax2.set_xlabel('Year')
     ax2.set_ylim([260,325])
     ax2.spines['top'].set_visible(False)
@@ -146,7 +146,7 @@ def make_plot():
     # inset bar chart for ET monthly trend 
     ax2b = fig.add_axes([0.77, 0.55, 0.15, 0.125], frameon=True)
     et_trend.to_pandas().plot.bar(ax=ax2b)
-    ax2b.set_ylabel('ET trend (mm/yr)',fontsize=8)
+    ax2b.set_ylabel('ET trend (mm/mon/year)',fontsize=8)
     ax2b.set_xlabel('')
     ax2b.spines['top'].set_visible(False)
     ax2b.spines['right'].set_visible(False)
@@ -161,7 +161,7 @@ def make_plot():
     # due to the mismatch between color interval of contouf and functiion uneven_colors
     # uneven_colors return -1 colors with respect to levels; conturnf draws all levels, with default settings
     # use levels-1 to plot and levels for colorbar
-    plot_map(dp.prec.sum(dim='month'), ax3, levels2[0:-1],cmap='bwr',lw=1)
+    plot_map(dp.prec.sum(dim='month'), ax3, levels2[0:-1],lw=1,cmap='bwr_r')
     set_lat_lon(ax3, range(70,140,20), range(10,51,20), label=True, pad=0.05, fontsize=10)
     
     ax3.set_title('ET-induced changes in precipitation contribution',fontsize=12)
@@ -173,7 +173,7 @@ def make_plot():
     cbbig3 = mpl.colorbar.ColorbarBase(ax=caxbig3, cmap=mycmap2, norm=mynorm2, orientation='horizontal',
                                       ticks=levels2)
     cbbig3.ax.set_xticklabels(levels2,fontsize=10)
-    cbbig3.set_label('Precipitation contribution changes (mm)')
+    cbbig3.set_label('Precipitation contribution changes (mm/year)')
     
     # ################ Panel d: ET induced prec change by region
     ax4 = fig.add_axes([0.525, 0.125, 0.4, 0.3],frameon=True)
@@ -181,7 +181,7 @@ def make_plot():
 #    ds_etp.plot(kind='bar',ax=ax4, legend=False)
     sns.barplot(x="name", y="precYear", hue="Region", data=ds_etp.reset_index(), dodge=False, ax=ax4)
     ax4.set_xticklabels(ax4.get_xticklabels(),rotation=90)
-    ax4.set_ylabel('Precipitation contribution changes (mm)')
+    ax4.set_ylabel('Precipitation contribution changes (mm/year)')
     ax4.set_xlabel('')
     ax4.set_title('ET-induced changes in precipitation contribution',fontsize=12)
     ax4.spines['top'].set_visible(False)
@@ -193,7 +193,7 @@ def make_plot():
     plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.1)
     plot_subplot_label(ax4, 'd', left_offset=-0.15,upper_offset=0)
     
-    plt.savefig('../figure/figure_et_prec_change_0424.png',dpi=300,bbox_inches='tight')
+    plt.savefig('../figure/figure_et_prec_change_0509.png',dpi=300,bbox_inches='tight')
     print('figure saved')
 
 if __name__=="__main__":
