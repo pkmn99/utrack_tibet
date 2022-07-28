@@ -30,7 +30,7 @@ def get_china_list(region):
         re=northeast
     if region=='east':
         re=east
-    if region=='central_south':
+    if region=='south':
         re=central_south
     if region=='southwest':
         re=southwest
@@ -80,7 +80,7 @@ def load_zonal_prec_con_change():
     ds_etp.loc[north,'Region']='north'
     ds_etp.loc[northeast,'Region']='northeast'
     ds_etp.loc[east,'Region']='east'
-    ds_etp.loc[central_south,'Region']='central_south'
+    ds_etp.loc[central_south,'Region']='south'
     ds_etp.loc[southwest,'Region']='southwest'
     ds_etp.loc[ds_etp['Region'].isnull(),'Region']='international'
     return ds_etp
@@ -93,10 +93,6 @@ def make_plot():
     dp = xr.open_dataset('../data/processed/prec_change_by_et_change_2000-2020_TP.nc')
     
 #    # zonal prec contribution
-#    ds=pd.read_csv('../data/processed/prec_change_by_et_mon_TP_zonal.csv')
-#    china_list=get_china_list('china')
-#    # only china
-#    ds_etp=ds.set_index('name').reindex(china_list)['precYear'].sort_values(ascending=False)
     ds_etp=load_zonal_prec_con_change()
 
     # ET yearly data
@@ -114,6 +110,9 @@ def make_plot():
     
     levels2=[-50,-40,-20,-10,-5,-2,-1,-0.25,0.25,1,2,5,10,20,40,50]
     mycmap2,mynorm2=uneven_cmap(levels2,cmap='bwr_r') # for panel b
+
+    # order of Chian division 
+    region_list=['northwest','southwest','north','south','east','northeast']
     
     #################### Panel a: ET regional trend
     fig = plt.figure(figsize=[10,8.5])
@@ -154,8 +153,7 @@ def make_plot():
                          fontsize=8,rotation=0)
     ax2b.set_yticklabels([0,0.1],fontsize=8)
 
-    ################### Panel c:  ET induced prec change
-    
+    ################### Panel c:  Map of ET induced prec change
     ax3 = fig.add_axes([0.035, 0.05, 0.4, 0.4], projection=ccrs.PlateCarree(),
                                                 frameon=False)
     # due to the mismatch between color interval of contouf and functiion uneven_colors
@@ -164,7 +162,7 @@ def make_plot():
     plot_map(dp.prec.sum(dim='month'), ax3, levels2[0:-1],lw=1,cmap='bwr_r')
     set_lat_lon(ax3, range(70,140,20), range(10,51,20), label=True, pad=0.05, fontsize=10)
     
-    ax3.set_title('ET-induced changes in precipitation contribution',fontsize=12)
+    ax3.set_title('Changes in ET-contributed precipitation',fontsize=12)
     
     # Add colorbar to big plot
     cbarbig3_pos = [ax3.get_position().x0, ax3.get_position().y0-0.03, ax3.get_position().width, 0.02]
@@ -177,23 +175,33 @@ def make_plot():
     
     # ################ Panel d: ET induced prec change by region
     ax4 = fig.add_axes([0.525, 0.125, 0.4, 0.3],frameon=True)
-    
-#    ds_etp.plot(kind='bar',ax=ax4, legend=False)
-    sns.barplot(x="name", y="precYear", hue="Region", data=ds_etp.reset_index(), dodge=False, ax=ax4)
+    sns.barplot(x="name", y="precYear", hue="Region", hue_order=region_list,
+                data=ds_etp.reset_index(), dodge=False, ax=ax4)
     ax4.set_xticklabels(ax4.get_xticklabels(),rotation=90)
     ax4.set_ylabel('Precipitation contribution changes (mm/year)')
     ax4.set_xlabel('')
-    ax4.set_title('ET-induced changes in precipitation contribution',fontsize=12)
+    ax4.set_title('Changes in ET-contributed precipitation',fontsize=12)
     ax4.spines['top'].set_visible(False)
     ax4.spines['right'].set_visible(False)
-    
-    # panel label
+
+    # Inset to show China region division
+    ax4inset = fig.add_axes([0.6, 0.25, 0.15, 0.125], projection=ccrs.PlateCarree(),
+                                                       frame_on=False)
+    ax4inset.outline_patch.set_visible(False) # Turn off borader
+    # Load geographical data
+    for i,r in enumerate(['西北','西南','华北','华南','East','东北']):
+        china_shp=shpreader.Reader('/media/liyan/HDD/Project/data/China_gis/七大分区/%s.shp'%r)
+        china_feature = ShapelyFeature(china_shp.geometries(), ccrs.PlateCarree(), facecolor=sns.color_palette()[i])
+        ax4inset.add_feature(china_feature,edgecolor='w', linewidth=0.1)
+    ax4inset.set_extent([70, 140, 10, 50],ccrs.Geodetic())
+
+    # Add panel label
     plot_subplot_label(ax1, 'a', left_offset=-0.1, upper_offset=0.15)
     plot_subplot_label(ax2, 'b', left_offset=-0.15,upper_offset=0)
     plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.1)
     plot_subplot_label(ax4, 'd', left_offset=-0.15,upper_offset=0)
     
-    plt.savefig('../figure/figure_et_prec_change_0509.png',dpi=300,bbox_inches='tight')
+    plt.savefig('../figure/figure_et_prec_change_0728.png',dpi=300,bbox_inches='tight')
     print('figure saved')
 
 if __name__=="__main__":
