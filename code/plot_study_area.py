@@ -32,9 +32,10 @@ def make_plot():
     lc_sum=(eet_forest.where(tb_mask).sum()+
             eet_grass.where(tb_mask).sum()+
             eet_shrub.where(tb_mask).sum()+
-            eet_baresnow.where(tb_mask).sum())
+            eet_baresnow.where(tb_mask).sum()+
+            eet_other.where(tb_mask).sum())
 
-    levels=np.round(np.arange(0,1.01,0.2),1)
+    levels=np.round(np.arange(0,1,0.2),1)
     levels2=np.arange(0,6501,500)
 
     fig = plt.figure(figsize=[12,12])
@@ -124,7 +125,7 @@ def make_plot():
     fig.text(0.5,0.41,"Ecosystem types",fontsize=14,ha='center')
     fig.text(0.5,0.26,"Ecological project areas",fontsize=14,ha='center')
     
-    plt.savefig('../figure/figure_study_area0509.png',bbox_inches='tight',dpi=300)
+    plt.savefig('../figure/figure_study_area0725.png',bbox_inches='tight',dpi=300)
     print('figure saved')
 
 if __name__=="__main__":
