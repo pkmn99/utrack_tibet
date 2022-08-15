@@ -6,7 +6,7 @@ from affine import Affine
 
 from plot_prec_con_map import load_zonal_prec
 from plot_et_prec_change import get_china_list
-from process_et_data import get_tb_mask
+from process_et_data import get_tb_mask,load_prec_region
 
 """
 Make affine. Parameters for TP 
@@ -96,9 +96,12 @@ def save_zonal_prec_et(source_region='TP'):
     print('zonal results saved')
 
 # zonal annual precipitation, used to calculate relative contribution 
-def save_zonal_prec(source_region='TP'):
+def save_zonal_prec(source_region='TP',prec_data='ERA5'):
     shape_fn = '../data/shp/China_provinces_with_around_countries.shp'
-    df = xr.open_dataset('../data/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
+    if prec_data=='CMFD':
+        df = xr.open_dataset('../data/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
+    if prec_data=='ERA5':
+        df=load_prec_region(prec_data=prec_data)
     af = make_affine()
     re=get_region_list()
     prec_temp = [calculate_zonal(shape_fn, df.prec[i].values, af, 'prec'+str(i+1)) for i in range(12)]
@@ -107,17 +110,20 @@ def save_zonal_prec(source_region='TP'):
     
     # Calculate year sum prec
     df_result.loc[:,'precYear']=df_result.iloc[:,0:12].sum(axis=1)
-    df_result.to_csv('../data/processed/prec_mon_%s_zonal.csv'%source_region)
+    df_result.to_csv('../data/processed/prec_mon_%s_%s_zonal.csv'%(source_region,prec_data))
     print('zonal results saved')
 
 # calculate in-TP prec contribution
-def intp_con(type='both',source_region='TP',scale='seasonal',lc_type='all',et_data='GLEAM_v3.5a'):
+def intp_con(type='both',source_region='TP',scale='seasonal',lc_type='all',et_data='GLEAM_v3.5a',prec_data='ERA5'):
     # within-TP contribution
     if lc_type=='all':
         dpc = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s.nc'%(source_region,et_data))
     else:
         dpc = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s_%s.nc'%(source_region,lc_type,et_data))
-    dp = xr.open_dataset('../data/processed/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
+    if prec_data=='ERA5':
+        dp = load_prec_region()
+    else:
+        dp = xr.open_dataset('../data/processed/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
     tb=get_tb_mask(scale='TP')
 
     # TP prec seasonal prec contribution 
@@ -141,11 +147,13 @@ def intp_con(type='both',source_region='TP',scale='seasonal',lc_type='all',et_da
 
 # create summerized table for TP, subregion, and different 
 # the et_data option only works for TP all land cover  
-def save_table(et_data='GLEAM_v3.5a'):
+def save_table(et_data='GLEAM_v3.5a', prec_data='ERA5'):
     china_list=get_china_list('china')
     
-    ds_tp_abs = load_zonal_prec(type='absolute',time_scale='season',rank=1000,et_data=et_data)
-    ds_tp_rel = load_zonal_prec(type='relative',time_scale='season',rank=1000,et_data=et_data)
+    ds_tp_abs = load_zonal_prec(type='absolute',time_scale='season',rank=1000,
+                                et_data=et_data,prec_data=prec_data)
+    ds_tp_rel = load_zonal_prec(type='relative',time_scale='season',rank=1000,
+                                et_data=et_data,prec_data=prec_data)
     
     ds_lin = load_zonal_prec(rank=1000,source_region='lindibaohu')
     ds_cao = load_zonal_prec(rank=1000,source_region='caodibaohu')
@@ -174,7 +182,7 @@ def save_table(et_data='GLEAM_v3.5a'):
 
 
     # within-TP contribution
-    [temp_pc,temp_p]=intp_con(et_data=et_data)
+    [temp_pc,temp_p]=intp_con(et_data=et_data,prec_data=prec_data)
     
    # construct table 4 
     d = {"TP": np.append(temp_pc,np.array(temp_pc)/np.array(temp_p))}
@@ -197,16 +205,29 @@ def save_table(et_data='GLEAM_v3.5a'):
     d = {"TP": np.array([temp_forest,temp_shrub,temp_grass,temp_baresnow,temp_other])}
     table6=pd.DataFrame(d,index=['forest','shrub','grass','baresnow','other']).transpose()
 
-   # table1.join(table2).join(table3).append(table4,sort=False).append(table5,sort=False) \
-   #         .append(table6,sort=False).to_csv('../data/processed/summary_table.csv')
-    table1.join(table2).join(table3).append(table4.join(table5).join(table6),sort=False) \
-             .to_csv('../data/processed/summary_table_%s.csv'%et_data)
-    print('summary table saved; et_data=%s'%et_data)
+   # table1.join(table2).join(table3).append(table4.join(table5).join(table6),sort=False) \
+   #          .to_csv('../data/processed/summary_table_%s_%s.csv'%(et_data,prec_data))
 
+    # summerzied table
+    df=table1.join(table2).join(table3).append(table4.join(table5).join(table6),sort=False)
+    # do rounding
+#    df.iloc[:,5:10]=(df.iloc[:,5:10]*100)
+    df.loc[:,['MAM_rel','JJA_rel','SON_rel','DJF_rel','Annual_rel']] \
+            =df.loc[:,['MAM_rel','JJA_rel','SON_rel','DJF_rel','Annual_rel']]*100
+    df[df>10]=df[df>10].round(0)
+    df[(df>1)&(df<10)]=df[(df>1)&(df<10)].round(1)
+    df[df<1]=df[df<1].round(2)
+    # convert string format: abs(rel)
+    for i in ['MAM','JJA','SON','DJF','Annual']:
+        df.loc[:,i] = df.loc[:,i].astype(str) + '(' +df.loc[:,i+'_rel'].astype(str) +')'
+
+    df.to_csv('../data/processed/summary_table_%s_%s_0729.csv'%(et_data,prec_data))
+    print('summary table saved; et data is %s prec data is %s'%(et_data,prec_data))
 
 if __name__=="__main__":
-#    save_zonal_prec_con()
-#    save_zonal_prec()
+#    save_zonal_prec_con(et_data='GLEAM_v3.5a')
+#    save_zonal_prec(prec_data='ERA5')
+    save_zonal_prec_con(et_data='PML')
 #    save_zonal_prec_et()
 
 # save zonal for different TP subregions
@@ -227,5 +248,6 @@ if __name__=="__main__":
 #    save_zonal_prec_con(lc_type='baresnow',et_data=et_data)
 #    save_zonal_prec_con(lc_type='other',et_data=et_data)
 
-    save_table(et_data='MODIS')
-    save_table(et_data='ERA5')
+#    save_table(et_data='MODIS')
+#    save_table(et_data='GLEAM_v3.5a',prec_data='ERA5')
+    save_table(et_data='PML',prec_data='ERA5')
