@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 def region_rank(regionlist,df):
     return df.set_index('name').dropna().loc[regionlist].sort_values(by='precYear',ascending=False).index.values
 
-def make_plot():
+def make_plot(et_data='GLEAM_v3.5a'):
     # load data
-    depz=pd.read_csv('../data/processed/prec_con_mon_TP_zonal.csv')
+    depz=pd.read_csv('../data/processed/prec_con_mon_TP_%s_zonal.csv'%et_data)
     temp = depz.set_index('name').dropna().sort_values(by='precYear',ascending=False).iloc[:,0:12]
     
     # region list
@@ -34,31 +34,32 @@ def make_plot():
     f, axes = plt.subplots(3,2,figsize=(15, 12))
     
     # Generate a custom diverging colormap
-    cmap = sns.color_palette("Blues",n_colors=64)
+   # cmap = sns.color_palette("Blues",n_colors=64)
+    cmap = sns.color_palette("YlGnBu",n_colors=64)
     
     sns.heatmap(temp.loc[northwest_order],
                 cmap=cmap, annot=True,
-                linewidths=.5, cbar_kws={"shrink": .75,"label":'Precipitation (mm)'},
+                linewidths=.5, cbar_kws={"extend":'both',"shrink": .75,"label":'Precipitation contribution (mm/month)'},
                 vmax=10,xticklabels=range(1,13),ax=axes[0,0]) #,fmt=".2g" two sig figure
     
     sns.heatmap(temp.loc[northeast_order], cmap=cmap, annot=True,
-                linewidths=.5, cbar_kws={"shrink": .75,"label":'Precipitation (mm)'},
+                linewidths=.5, cbar_kws={"extend":'both',"shrink": .75,"label":'Precipitation contribution (mm/month)'},
                 vmax=1,xticklabels=range(1,13),ax=axes[0,1],fmt=".1f")
     
     sns.heatmap(temp.loc[north_order], cmap=cmap, annot=True,
-                linewidths=.5, cbar_kws={"shrink": .75,"label":'Precipitation (mm)'},
+                linewidths=.5, cbar_kws={"extend":'both',"shrink": .75,"label":'Precipitation contribution (mm/month)'},
                vmax=2,xticklabels=range(1,13),ax=axes[1,0],fmt=".1f")
     
     sns.heatmap(temp.loc[east_order], cmap=cmap, annot=True,
-                linewidths=.5, cbar_kws={"shrink": .75,"label":'Precipitation (mm)'},
+                linewidths=.5, cbar_kws={"extend":'both',"shrink": .75,"label":'Precipitation contribution (mm/month)'},
                 vmax=2,xticklabels=range(1,13),ax=axes[1,1],fmt=".1f")
     
     sns.heatmap(temp.loc[southwest_order], cmap=cmap, annot=True,
-                linewidths=.5, cbar_kws={"shrink": .75,"label":'Precipitation (mm)'},
+                linewidths=.5, cbar_kws={"extend":'both',"shrink": .75,"label":'Precipitation contribution (mm/month)'},
                 vmax=20,xticklabels=range(1,13),ax=axes[2,0])
     
     sns.heatmap(temp.loc[central_south_order], cmap=cmap, annot=True,
-                linewidths=.5, cbar_kws={"shrink": .75,"label":'Precipitation (mm)'},
+                linewidths=.5, cbar_kws={"extend":'both',"shrink": .75,"label":'Precipitation contribution (mm/month)'},
                 vmax=2,xticklabels=range(1,13),ax=axes[2,1],fmt=".1f")
     
     # remove ylabel
@@ -76,7 +77,7 @@ def make_plot():
     
     plt.subplots_adjust(hspace=0.3)
     
-    plt.savefig('../figure/figure_prec_con_monthly.png',dpi=300,bbox_inches='tight')
+    plt.savefig('../figure/figure_prec_con_monthly_0721.png',dpi=300,bbox_inches='tight')
     print('figure saved')
 
 if __name__=="__main__":
