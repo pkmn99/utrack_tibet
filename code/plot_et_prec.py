@@ -17,25 +17,23 @@ def make_plot():
     cn_mask=get_china_mask() # China mask for ERA5
 
     levels1=np.arange(0,901,100) 
-    mycmap1,mynorm1=uneven_cmap(levels1,cmap='bwr') # for panel a
+    mycmap1,mynorm1=uneven_cmap(levels1,cmap='coolwarm_r') # for panel a
 
     # define map projection
     pr=ccrs.PlateCarree()
 
     #################### Panel a: ET
     fig = plt.figure(figsize=[8, 5])
-    
     ax1 = fig.add_axes([0.035, 0.475, 0.4, 0.4], projection=pr)
-#    ax1 = fig.add_subplot(2, 1, 1, projection=pr)
 
-    plot_map_tb(et.sum(dim='month'),ax=ax1, levels=levels1,pr=pr,cmap='bwr')
+    plot_map_tb(et.sum(dim='month'),ax=ax1, levels=levels1,pr=pr,cmap='coolwarm_r')
 
     set_lat_lon(ax1, range(75,105,10), range(25,40,10), label=True, pad=0.05, fontsize=10)
     ax1.set_title('ET',fontsize=12)
 
     ################### Panel b: annual Prec China
     ax2 = fig.add_axes([0.035, 0.05, 0.4, 0.4], projection=pr)
-    plot_map(dp.prec.where(cn_mask).sum(dim='month',skipna=False),ax=ax2, levels=np.arange(0,901,100),lw=1,cmap='bwr')
+    plot_map(dp.prec.where(cn_mask).sum(dim='month',skipna=False),ax=ax2, levels=np.arange(0,901,100),lw=1,cmap='coolwarm_r')
 
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
@@ -62,7 +60,7 @@ def make_plot():
     plot_subplot_label(ax2, 'b', left_offset=-0.1,upper_offset=0.1)
     
     plt.subplots_adjust(hspace=0.1)
-    plt.savefig('../figure/figure_et_prec0424.png',dpi=300,bbox_inches='tight')
+    plt.savefig('../figure/figure_et_prec0509.png',dpi=300,bbox_inches='tight')
     print('figure saved')
 
 if __name__=="__main__":
