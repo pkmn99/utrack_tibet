@@ -102,7 +102,7 @@ def et_lc_fraction(lc_type='all'):
         if lc_type=='other':
             lc_list=[11,12,13,14]# other
 
-        det = xr.open_dataset('../data/processed/et_fraction_clean.nc')
+        det = xr.open_dataset('../data/processed/pml_et_fraction_clean.nc')
         det_tb = subset_tb(det['ET_fraction_for_land_cover'])
         det_lc = det_tb.sel(landcover=lc_list).sum(dim='landcover')
     return det_lc.values
@@ -120,6 +120,16 @@ def load_et_region(source_region='TP',scale='ymonmean',lc_type='all',et_data='GL
         etf = et_lc_fraction(lc_type=lc_type) # et fraction for land cover group; et_f=1 when lc_type=='all'
         dfe=subset_tb(dfe) * etf # multiple total et by et fraction
     return dfe.E
+
+# load ERA5 precipitation
+def load_prec_region(source_region='TP',scale='ymonmean',prec_data='ERA5',var='prec'):
+    if prec_data=='ERA5':
+        dp = xr.open_dataset('../data/processed/%s_2008-2017_%s_ymonmean_360x720_clean.nc'%(var,prec_data))
+    if prec_data=='CMFD':
+        dp = xr.open_dataset('../data/processed/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
+    if (source_region=='TP')&(prec_data=='ERA5'):
+        dp=subset_tb(dp)
+    return dp
 
 # Trend estimation using polyfit for different months
 # df is a dataset; requirs new xarray version, mync env
