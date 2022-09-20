@@ -80,11 +80,11 @@ def cal_season(ds,varname='prec'):
 # calculate et relative contribution to prec in different provinces
 # return the top 30
 # May need to manually edit Kashmir on two csv file to shorten the name
-def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP',lc_type='all',et_data='GLEAM_v3.5a',prec_data='ERA5',attach_region=False):
+def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP',lc_type='all',et_data='GLEAM_v3.5a',var='E',prec_data='ERA5',attach_region=False):
     if lc_type=='all':
-        ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_zonal.csv'%(source_region,et_data)).set_index('name')
+        ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_%s_zonal.csv'%(source_region,et_data,var)).set_index('name')
     else:
-        ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_%s_zonal.csv'%(source_region,lc_type,et_data)).set_index('name')
+        ds = pd.read_csv('../data/processed/prec_con_mon_%s_%s_%s_%s_zonal.csv'%(source_region,lc_type,et_data,var)).set_index('name')
 
     if attach_region:
         northwest=['Shaanxi','Gansu','Qinghai','Ningxia','Xinjiang']
@@ -125,8 +125,8 @@ def load_zonal_prec(type='absolute',time_scale='year',rank=30, source_region='TP
     return ds30
 
 # calculate et relative contribution to prec 
-def load_prec_conptc(prec_data='ERA5',et_data='GLEAM_v3.5a'):
-    dep=xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP_%s.nc'%et_data)
+def load_prec_conptc(prec_data='ERA5',et_data='GLEAM_v3.5a',var='E'):
+    dep=xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP_%s_%s.nc'%(et_data,var))
     if prec_data=='CMFD':
         dp=xr.open_dataset('../data/prec_CMFD_V0106_B-01_01mo_050deg_2008-2017_ymonmean_clean.nc')
     if prec_data=='ERA5':
@@ -139,12 +139,12 @@ def get_china_mask():
     p=load_prec_region(prec_data='CMFD')
     return p.prec.sum(dim='month')>0
 
-def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
+def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a',var='E'):
     # load data
-    dp = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP_%s.nc'%et_data)# prec contribution
-    dpct=load_prec_conptc(prec_data=prec_data,et_data=et_data) # relative prec contribution
-    ds30=load_zonal_prec(type='absolute',et_data=et_data,attach_region=True) # top 30 provincial prec contribution
-    dsr = load_zonal_prec(type='relative',prec_data=prec_data,et_data=et_data,attach_region=True)# top 30 provincial prec relative contribution
+    dp = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP_%s_%s.nc'%(et_data,var))# prec contribution
+    dpct=load_prec_conptc(prec_data=prec_data,et_data=et_data,var=var) # relative prec contribution
+    ds30=load_zonal_prec(type='absolute',et_data=et_data,attach_region=True,var=var) # top 30 provincial prec contribution
+    dsr = load_zonal_prec(type='relative',prec_data=prec_data,et_data=et_data,attach_region=True,var=var)# top 30 provincial prec relative contribution
 
     cn_mask=get_china_mask()
     
@@ -153,11 +153,18 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
         levels1=[0,1,5,10,20,50,100,200,300,400,500]
     else:
         levels1=[0,1,5,10,20,50,100,200,300,400,500,600]
+
     if prec_data=='ERA5':
         levels2=[0,0.01,0.05,0.1,0.20,0.40,0.6,0.8]
     else:
         levels2=[0,0.01,0.05,0.1,0.20,0.50,0.8,1]
-    
+
+    # If ET_var is transpiration(Et), use smaller range
+    if var=='Et':
+        levels1=[0,0.5,1,5,10,20,50,100,150,200,250]
+        levels2=[0,0.005,0.025,0.05,0.10,0.20,0.3,0.4]
+        levels2_txt=['0','0.5','2.5','5','10','20','30','40']
+
     # create uneven levels cmaps for maps
     mycmap1,mynorm1=uneven_cmap(levels1,cmap='YlGnBu') # for panel a
     mycmap2,mynorm2=uneven_cmap(levels2,cmap='YlGnBu') # for panel c
@@ -169,8 +176,8 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     ax1 = fig.add_axes([0.075, 0.55, 0.4, 0.4], projection=ccrs.PlateCarree(),
                                          frameon=False)
     
-    # only plot regions with prec contribution > 1 mm
-    ma=dp['prec'].sum(dim='month')>1 
+    # only plot regions with prec contribution > 1 or 0.5 mm
+    ma=dp['prec'].sum(dim='month')>0.5 
     
     plot_map(dp['prec'].sum(dim='month').where(ma), ax1, levels1, lw=1,cmap='YlGnBu')
     set_lat_lon(ax1, range(70,140,20), range(10,51,20), label=True, pad=0.05, fontsize=10)
@@ -181,7 +188,7 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     
     cbbig1 = mpl.colorbar.ColorbarBase(ax=caxbig1, cmap=mycmap1, norm=mynorm1,
             orientation='horizontal', ticks=levels1)
-    cbbig1.ax.set_yticklabels(levels1,fontsize=10)
+    cbbig1.ax.set_xticklabels([str(i) for i in levels1],fontsize=10) # convert list to str for label
     cbbig1.set_label('Precipitation contribution (mm/year)')
     
     ######################### Panel B: precipitation contribution in different provinces
@@ -221,7 +228,8 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     
     cbbig2 = mpl.colorbar.ColorbarBase(ax=caxbig2, cmap=mycmap2, norm=mynorm2, 
                                        orientation='horizontal', ticks=levels2)
-    cbbig2.ax.set_xticklabels((np.array(levels2)*100).astype(np.int),fontsize=10)
+   # cbbig2.ax.set_xticklabels((np.array(levels2)*100).astype(np.int),fontsize=10)
+    cbbig2.ax.set_xticklabels(levels2_txt,fontsize=10)
     cbbig2.set_label('Precipitation contribution (%)')
     
     ################### Panel D: relative precipitation contribution in different provinces
@@ -242,8 +250,8 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a'):
     plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.125)
     plot_subplot_label(ax4, 'd', left_offset=-0.05,upper_offset=0.05)
     
-    plt.savefig('../figure/figure_prec_con_map_%s_%s_0726.png'%(prec_data,et_data),dpi=300)
+    plt.savefig('../figure/figure_prec_con_map_%s_%s_%s_0915.png'%(prec_data,et_data,var),dpi=300)
     print('figure saved')
    
 if __name__=="__main__":
-    make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a')
+    make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a',var='Et')
