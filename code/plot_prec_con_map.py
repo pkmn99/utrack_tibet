@@ -139,12 +139,26 @@ def get_china_mask():
     p=load_prec_region(prec_data='CMFD')
     return p.prec.sum(dim='month')>0
 
+# A warper to simplify load et data for ET and T contribution 
+def load_zonal_et_clean(type='absolute',var='E'):
+    dse=load_zonal_prec(type=type,attach_region=True,var='E') # top 30 provincial prec contribution
+    dst=load_zonal_prec(type=type,attach_region=True,var='Et')
+    return dse.join(dst['precYear'],rsuffix='1') # E is precYear, and T is precYear1
+
+# var="E": original precipitation contribution by ET,updated to include T
+# var="Et": precipitation contribution by T
 def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a',var='E'):
     # load data
     dp = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP_%s_%s.nc'%(et_data,var))# prec contribution
+    dpt = xr.open_dataset('../data/processed/utrack_climatology_prec_0.5_mon_TP_%s_%s.nc'%(et_data,'Et'))# prec contribution by T
     dpct=load_prec_conptc(prec_data=prec_data,et_data=et_data,var=var) # relative prec contribution
+    dptct=load_prec_conptc(prec_data=prec_data,et_data=et_data,var='Et') # relative prec contribution by T
+
     ds30=load_zonal_prec(type='absolute',et_data=et_data,attach_region=True,var=var) # top 30 provincial prec contribution
     dsr = load_zonal_prec(type='relative',prec_data=prec_data,et_data=et_data,attach_region=True,var=var)# top 30 provincial prec relative contribution
+    if var=='E': #override ds30 and dsr
+        ds30 = load_zonal_et_clean(type='absolute',var=var)
+        dsr = load_zonal_et_clean(type='relative',var=var)
 
     cn_mask=get_china_mask()
     
@@ -177,10 +191,20 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a',var='E'):
                                          frameon=False)
     
     # only plot regions with prec contribution > 1 or 0.5 mm
-    ma=dp['prec'].sum(dim='month')>0.5 
+    ma=dp['prec'].sum(dim='month')>1
     
     plot_map(dp['prec'].sum(dim='month').where(ma), ax1, levels1, lw=1,cmap='YlGnBu')
     set_lat_lon(ax1, range(70,140,20), range(10,51,20), label=True, pad=0.05, fontsize=10)
+
+    # Inset to show precipitation contribution from T 
+    ax1inset = fig.add_axes([ax1.get_position().x0, ax1.get_position().y0, 0.15, 0.11], 
+            projection=ccrs.PlateCarree(), frame_on=True)
+#    ax1inset.outline_patch.set_visible(False) # Turn off borader
+    plot_map(dpt['prec'].sum(dim='month').where(ma), ax1inset, levels1, lw=1,cmap='YlGnBu',
+             extent=[70, 140, 15, 50])
+    ax1inset.text(0.8,0.2,'$P_T$', fontsize=14, transform=ax1inset.transAxes)
+    ax1.text(0.9,0.1,'$P_{ET}$', fontsize=14, transform=ax1.transAxes)
+
     
     # Add colorbar to big plot
     cbarbig1_pos = [ax1.get_position().x0, ax1.get_position().y0-0.03, ax1.get_position().width, 0.02]
@@ -196,11 +220,23 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a',var='E'):
     sns.barplot(x="name", y="precYear", hue="Region", hue_order=region_list,
                 data=ds30.reset_index(), dodge=False, ax=ax2)
 
+    sns.scatterplot(data=ds30.reset_index(), x="name", y="precYear1",
+                    zorder=10,marker="_",color='k',linewidth=2, s=50,
+                    ax=ax2)
+
     ax2.set_xticklabels(ax2.get_xticklabels(),rotation=90)
     ax2.set_ylabel('Precipitation contribution (mm/year)')
     ax2.set_xlabel('')
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
+
+    ax2.set_xlim([-0.5,29.5]) #based on original E figure
+
+    ## a very clumsy way to recreate a combined legend  because dont know how to get line handel
+    h1, l1 = ax2.get_legend_handles_labels()
+    legend1=ax2.legend(h1,l1,title='PET')
+    legend2 = ax2.legend('T',loc='lower right',title='PT')
+    ax2.legend(legend1.get_patches() + legend2.get_lines(),l1 + ['$P_T$'], title='$P_{ET}$')
 
     # Inset to show China region division
     ax2inset = fig.add_axes([0.65, 0.75, 0.15, 0.125], projection=ccrs.PlateCarree(),
@@ -221,6 +257,14 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a',var='E'):
     
     plot_map(dpct.where(cn_mask), ax3,levels2, lw=1,cmap='YlGnBu')
     set_lat_lon(ax3, range(70,140,20), range(10,51,20), label=True, pad=0.05, fontsize=10)
+
+    # Inset to show precipitation contribution percent from T 
+    ax3inset = fig.add_axes([ax3.get_position().x0, ax3.get_position().y0, 0.15, 0.11],
+                   projection=ccrs.PlateCarree(), frame_on=False)
+    plot_map(dptct.where(cn_mask), ax3inset, levels2, lw=1,cmap='YlGnBu',extent=[70, 140, 15, 50])
+
+    ax3inset.text(0.8,0.2,'$P_T$', fontsize=14, transform=ax3inset.transAxes)
+    ax3.text(0.9,0.1,'$P_{ET}$', fontsize=14, transform=ax3.transAxes)
     
     # Add colorbar to big plot
     cbarbig2_pos = [ax3.get_position().x0, ax3.get_position().y0-0.03, ax3.get_position().width, 0.02]
@@ -228,8 +272,10 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a',var='E'):
     
     cbbig2 = mpl.colorbar.ColorbarBase(ax=caxbig2, cmap=mycmap2, norm=mynorm2, 
                                        orientation='horizontal', ticks=levels2)
-   # cbbig2.ax.set_xticklabels((np.array(levels2)*100).astype(np.int),fontsize=10)
-    cbbig2.ax.set_xticklabels(levels2_txt,fontsize=10)
+    if var=='E':
+        cbbig2.ax.set_xticklabels((np.array(levels2)*100).astype(np.int),fontsize=10)
+    if var=='Et':
+        cbbig2.ax.set_xticklabels(levels2_txt,fontsize=10)
     cbbig2.set_label('Precipitation contribution (%)')
     
     ################### Panel D: relative precipitation contribution in different provinces
@@ -238,11 +284,17 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a',var='E'):
     sns.barplot(x="name", y="precYear", hue="Region", hue_order=region_list,
                 data=dsr.reset_index(), dodge=False, ax=ax4)
 
+    sns.scatterplot(data=dsr.reset_index(), x="name", y="precYear1",
+                    zorder=10,marker="_",color='k',linewidth=2, s=50,
+                    ax=ax4)
+    ax4.legend(legend1.get_patches() + legend2.get_lines(),l1 + ['$P_T$'], title='$P_{ET}$')
+
     ax4.set_xticklabels(ax4.get_xticklabels(),rotation=90)
     ax4.set_ylabel('Precipitation contribution (%)')
     ax4.set_xlabel('')
     ax4.spines['top'].set_visible(False)
     ax4.spines['right'].set_visible(False)
+    ax4.set_xlim([-0.5,29.5])
     
     # add panel label
     plot_subplot_label(ax1, 'a', left_offset=-0.1, upper_offset=0.125)
@@ -250,8 +302,8 @@ def make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a',var='E'):
     plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.125)
     plot_subplot_label(ax4, 'd', left_offset=-0.05,upper_offset=0.05)
     
-    plt.savefig('../figure/figure_prec_con_map_%s_%s_%s_0915.png'%(prec_data,et_data,var),dpi=300)
+    plt.savefig('../figure/figure_prec_con_map_%s_%s_%s_0920.png'%(prec_data,et_data,var),dpi=300)
     print('figure saved')
    
 if __name__=="__main__":
-    make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a',var='Et')
+    make_plot(prec_data='ERA5',et_data='GLEAM_v3.5a',var='E')
