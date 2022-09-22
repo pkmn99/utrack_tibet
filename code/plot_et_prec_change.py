@@ -62,9 +62,9 @@ def plot_map_tb(d, ax, levels, minmax=[],region='TP',pr=ccrs.PlateCarree(),cmap=
    # ax.set_extent([72, 105, 25, 40], crs=pr)
 
 # load zonal changes in prec contribution due to ET
-def load_zonal_prec_con_change():
+def load_zonal_prec_con_change(var='E'):
     # zonal prec contribution
-    ds=pd.read_csv('../data/processed/prec_change_by_et_mon_TP_zonal.csv')
+    ds=pd.read_csv('../data/processed/prec_change_by_%s_mon_zonal.csv'%var)
     china_list=get_china_list('china')
     # only china
     ds_etp=ds.set_index('name').reindex(china_list)['precYear'].sort_values(ascending=False).to_frame()
@@ -85,18 +85,18 @@ def load_zonal_prec_con_change():
     ds_etp.loc[ds_etp['Region'].isnull(),'Region']='international'
     return ds_etp
 
-def make_plot():
+def make_plot(var='E'):
     # ET trends
-    det=xr.open_dataset('../data/processed/Etrend_2000-2020_GLEAM_v3.5a_TP_mon.nc')
+    det=xr.open_dataset('../data/processed/%strend_2000-2020_GLEAM_v3.5a_TP_mon.nc'%var)
     
     # prec contribution
-    dp = xr.open_dataset('../data/processed/prec_change_by_et_change_2000-2020_TP.nc')
+    dp = xr.open_dataset('../data/processed/prec_change_by_%s_change_2000-2020_TP.nc'%var)
     
 #    # zonal prec contribution
-    ds_etp=load_zonal_prec_con_change()
+    ds_etp=load_zonal_prec_con_change(var=var)
 
     # ET yearly data
-    dety = load_et_region(scale='year')
+    dety = load_et_region(scale='year',var=var)
 
     # mask for TP
     tb_mask=get_tb_mask('TP')
@@ -105,10 +105,14 @@ def make_plot():
     et_trend=det.E_trend.where(tb_mask).mean(dim=['lat','lon'])
     
     # create levels for map
-    levels1=[-6,-4,-2,-1,-0.5, -0.25, 0.25, 0.5,1,2,4,6]
+    if var=='E':
+        levels1=[-6,-4,-2,-1,-0.5, -0.25, 0.25, 0.5,1,2,4,6]
+        levels2=[-50,-40,-20,-10,-5,-2,-1,-0.25,0.25,1,2,5,10,20,40,50]
+    if var=='Et':
+        levels1=[-4,-3,-2,-1,-0.5, -0.1, 0.1, 0.5,1,2,3,4]
+        levels2=[-40,-20,-10,-5,-2,-1,-0.1,0.1,1,2,5,10,20,40]
+
     mycmap1,mynorm1=uneven_cmap(levels1,cmap='bwr_r') # for panel a
-    
-    levels2=[-50,-40,-20,-10,-5,-2,-1,-0.25,0.25,1,2,5,10,20,40,50]
     mycmap2,mynorm2=uneven_cmap(levels2,cmap='bwr_r') # for panel b
 
     # order of Chian division 
@@ -137,7 +141,11 @@ def make_plot():
     et_year.to_pandas().plot(ax=ax2)
     ax2.set_ylabel('ET (mm/year)')
     ax2.set_xlabel('Year')
-    ax2.set_ylim([260,325])
+    if var=="E":
+        ax2.set_ylim([260,325])
+    if var=="Et":
+        ax2.set_ylim([135,175])
+
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
     ax2.set_title('ET trends in TP',fontsize=12)
@@ -151,6 +159,7 @@ def make_plot():
     ax2b.spines['right'].set_visible(False)
     ax2b.set_xticklabels(['J','F','M','A','M','J','J','A','S','O','N','D'],
                          fontsize=8,rotation=0)
+    ax2b.set_yticks([0,0.1])
     ax2b.set_yticklabels([0,0.1],fontsize=8)
 
     ################### Panel c:  Map of ET induced prec change
@@ -180,6 +189,11 @@ def make_plot():
     ax4.set_xticklabels(ax4.get_xticklabels(),rotation=90)
     ax4.set_ylabel('Precipitation contribution changes (mm/year)')
     ax4.set_xlabel('')
+
+    ax4.set_ylim([0,18])
+    ax4.set_yticks(np.arange(0,18.1,3))
+    ax4.set_yticklabels(['%d'%i for i in np.arange(0,18.1,3)]) # remove digit
+
     ax4.set_title('Changes in ET-contributed precipitation',fontsize=12)
     ax4.spines['top'].set_visible(False)
     ax4.spines['right'].set_visible(False)
@@ -201,8 +215,8 @@ def make_plot():
     plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.1)
     plot_subplot_label(ax4, 'd', left_offset=-0.15,upper_offset=0)
     
-    plt.savefig('../figure/figure_et_prec_change_0728.png',dpi=300,bbox_inches='tight')
+    plt.savefig('../figure/figure_et_prec_change_0915.png',dpi=300,bbox_inches='tight')
     print('figure saved')
 
 if __name__=="__main__":
-   make_plot() 
+   make_plot(var='Et') 
