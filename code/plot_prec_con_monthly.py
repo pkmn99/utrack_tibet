@@ -73,7 +73,7 @@ def make_plot(et_data='GLEAM_v3.5a',var='E'):
     region_color_order=[0,5,2,4,1,3] # order to match the map
    # [a.set_title(t,fontsize=12,fontweight='bold') for t,a in zip(['Northwest','Northeast','North','East','Southwest','South'],axes.flatten())]
     for i,t in enumerate(['Northwest','Northeast','North','East','Southwest','South']):
-        axes.flatten()[i].set_title(t,fontsize=12,fontweight='bold',color=sns.color_palette()[region_color_order[i]])
+        axes.flatten()[i].set_title(t,fontsize=15,fontweight='bold',color=sns.color_palette()[region_color_order[i]])
     
     # disable tick label auto rotation
     axes[0,0].set_yticklabels(northwest_order,rotation=False)
@@ -84,8 +84,8 @@ def make_plot(et_data='GLEAM_v3.5a',var='E'):
    # for i,t in enumerate([northwest_order,northeast_order,north_order,east_order,southwest_order,central_south_order]):
    #     axes.flatten()[i].set_yticklabels(t,rotation=False,color=sns.color_palette()[region_color_order[i]])
     
-    axes[2,0].set_xlabel('Month')
-    axes[2,1].set_xlabel('Month')
+    axes[2,0].set_xlabel('Month',fontsize=14)
+    axes[2,1].set_xlabel('Month',fontsize=14)
 
     ############### Inset to show China region division
     ax2inset = fig.add_axes([0.4, 0.85, 0.15, 0.125], projection=ccrs.PlateCarree(),
@@ -105,4 +105,4 @@ def make_plot(et_data='GLEAM_v3.5a',var='E'):
     print('figure saved')
 
 if __name__=="__main__":
-    make_plot(var='E')
+    make_plot(var='Et')
