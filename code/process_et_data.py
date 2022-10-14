@@ -30,8 +30,8 @@ def save_gleam_et(et_data='GLEAM_v3.5a',var='E'):
     print('The cleaned GLEAM %s data saved %s'%(var,et_data))
 
 # Save monthly cleaned ET for 2000 to 2020 at 0.5 deg
-def save_gleam_et_mon():
-    d = xr.open_dataset('../../data/GLEAM/E_2000-2020_GLEAM_v3.5a_MO_360x720.nc')
+def save_gleam_et_mon(var='E'):
+    d = xr.open_dataset('../../data/GLEAM/%s_2000-2020_GLEAM_v3.5a_MO_360x720.nc'%var)
     d_temp = np.zeros([252,360,720])
     for i in range(252):
         d_temp[i:,:,]=np.flipud(np.moveaxis(d['Band'+str(i+1)].values,0,1))
@@ -40,8 +40,8 @@ def save_gleam_et_mon():
             coords=[pd.date_range('2000','2021',freq='M'),d.lon[::-1], d.lat],
                          dims=['time','lat','lon'],
                          name='E')
-    myet.to_netcdf('../data/E_2000-2020_GLEAM_v3.5a_MO_360x720_clean.nc')
-    print('The cleaned GLEAM ET data saved ')
+    myet.to_netcdf('../data/processed/%s_2000-2020_GLEAM_v3.5a_MO_360x720_clean.nc'%var)
+    print('The cleaned GLEAM %s data saved'%var)
 
 # Save data to TP extent
 def save_ChinaForcing_prec():
@@ -137,8 +137,8 @@ def get_linear_trend(df):
     df['time'] = np.arange(df.time.shape[0])
     return df.polyfit(dim='time',deg=1,skipna=True)
 
-def save_et_trend_mon():
-    det = load_et_region(source_region='TP',scale='month')
+def save_et_trend_mon(var='E'):
+    det = load_et_region(source_region='TP',scale='month',var=var)
     d_temp = np.zeros([12,det.shape[1],det.shape[2]])
     for i in range(12):
         d_temp[i,:,:]=get_linear_trend(det.isel(time=det.time.dt.month==(i+1)))['polyfit_coefficients'][0].values
@@ -148,13 +148,13 @@ def save_et_trend_mon():
                          dims=['month','lat','lon'],
                          name='E_trend')
 
-    mytrend.to_netcdf('../data/processed/Etrend_2000-2020_GLEAM_v3.5a_TP_mon.nc')
-    print('monthly ET trend saved')
+    mytrend.to_netcdf('../data/processed/%strend_2000-2020_GLEAM_v3.5a_TP_mon.nc'%var)
+    print('monthly %s trend saved'%var)
 
 
 if __name__=="__main__":
 #    save_gleam_et()
-    save_gleam_et(var='Et')
-#    save_gleam_et_mon()
+#    save_gleam_et(var='Et')
+#    save_gleam_et_mon(var='Et')
 #    save_ChinaForcing_prec()
-#    save_et_trend_mon()
+    save_et_trend_mon(var='Et')

@@ -93,9 +93,9 @@ def make_subregion_index():
 Calculate ET contribution to total precipitation over the region
 add option for different land cover groups
 """
-def save_prec_contribution(source_region='TP',lc_type='all',et_data='GLEAM_v3.5a'):
+def save_prec_contribution(source_region='TP',lc_type='all',et_data='GLEAM_v3.5a',var='E'):
     subregion_index=make_subregion_index()
-    dfe = load_et_region(lc_type=lc_type,et_data=et_data)
+    dfe = load_et_region(lc_type=lc_type,et_data=et_data,var=var)
     n_lat, n_lon = dfe.shape[1::]
     pre = np.zeros([12, n_lat, n_lon])
     for i in range(12):
@@ -116,15 +116,15 @@ def save_prec_contribution(source_region='TP',lc_type='all',et_data='GLEAM_v3.5a
                             dims=['month','lat','lon'],
                             name='prec')
     if lc_type=='all':
-        pre_export.to_netcdf('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s.nc'%(source_region,et_data))
+        pre_export.to_netcdf('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s_%s.nc'%(source_region,et_data,var))
     else:
-        pre_export.to_netcdf('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s_%s.nc'%(source_region,lc_type,et_data))
+        pre_export.to_netcdf('../data/processed/utrack_climatology_prec_0.5_mon_%s_%s_%s_%s.nc'%(source_region,lc_type,et_data,var))
     
-    print('prec contribution file for region %s and lc type %s, et_data %s saved'%(source_region,lc_type,et_data))
+    print('prec contribution file for region %s and lc type %s, et_data %s, var %s saved'%(source_region,lc_type,et_data,var))
 
-def save_prec_contribution_by_etrend(source_region='TP'):
+def save_prec_contribution_by_etrend(source_region='TP',var='E'):
     subregion_index=make_subregion_index()
-    dfe = xr.open_dataset('../data/processed/Etrend_2000-2020_GLEAM_v3.5a_TP_mon.nc')['E_trend']*21 #2000 to 2020, 21 years
+    dfe = xr.open_dataset('../data/processed/%strend_2000-2020_GLEAM_v3.5a_TP_mon.nc'%var)['E_trend']*21 #2000 to 2020, 21 years
     n_lat, n_lon = dfe.shape[1::]
     pre = np.zeros([12, n_lat, n_lon])
     for i in range(12):
@@ -144,8 +144,8 @@ def save_prec_contribution_by_etrend(source_region='TP'):
     pre_export=xr.DataArray(pre, coords=[range(1,13), dfe.lat,dfe.lon],
                             dims=['month','lat','lon'],
                             name='prec')
-    pre_export.to_netcdf('../data/processed/prec_change_by_et_change_2000-2020_%s.nc'%(source_region))
-    print('prec contribution by et change file for region %s saved'%source_region)
+    pre_export.to_netcdf('../data/processed/prec_change_by_%s_change_2000-2020_%s.nc'%(var,source_region))
+    print('prec contribution by %s change file for region %s saved'%(var,source_region))
 
 if __name__=="__main__":
 #    for i in range(12):
@@ -160,18 +160,21 @@ if __name__=="__main__":
 # save precipitation contribution for different regions
 # save with different et data
     et_data='GLEAM_v3.5a'
+    var='Et'
 #    et_data='MODIS'
 #    et_data='ERA5'
-    save_prec_contribution(source_region='TP',et_data=et_data)
-    save_prec_contribution(source_region='lindibaohu',et_data=et_data)
-    save_prec_contribution(source_region='caodibaohu',et_data=et_data)
-    save_prec_contribution(source_region='shahuazhili',et_data=et_data)
-    save_prec_contribution(source_region='shuituliushi',et_data=et_data)
-#    save_prec_contribution_by_etrend()
+#    et_data='PML'
+#    save_prec_contribution(source_region='TP',et_data=et_data,var=var)
+#    save_prec_contribution(source_region='lindibaohu',et_data=et_data,var=var)
+#    save_prec_contribution(source_region='caodibaohu',et_data=et_data,var=var)
+#    save_prec_contribution(source_region='shahuazhili',et_data=et_data,var=var)
+#    save_prec_contribution(source_region='shuituliushi',et_data=et_data,var=var)
+#    save_prec_contribution_by_etrend(var='E')
+#    save_prec_contribution_by_etrend(var='Et')
 
 # save precipitation contribution for different land cover groups 
-    save_prec_contribution(lc_type='forest',et_data=et_data)
-    save_prec_contribution(lc_type='shrub',et_data=et_data)
-    save_prec_contribution(lc_type='grass',et_data=et_data)
-    save_prec_contribution(lc_type='baresnow',et_data=et_data)
-    save_prec_contribution(lc_type='other',et_data=et_data)
+    save_prec_contribution(lc_type='forest',et_data=et_data,var=var)
+    save_prec_contribution(lc_type='shrub',et_data=et_data,var=var)
+    save_prec_contribution(lc_type='grass',et_data=et_data,var=var)
+    save_prec_contribution(lc_type='baresnow',et_data=et_data,var=var)
+    save_prec_contribution(lc_type='other',et_data=et_data,var=var)
