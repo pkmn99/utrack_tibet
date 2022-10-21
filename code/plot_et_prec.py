@@ -60,17 +60,14 @@ def make_plot():
     cbbig1.ax.set_xticklabels(levels1,fontsize=10)
     cbbig1.set_label('(mm/yr)')
     
-#    ax1.set_position([ax3.get_position().x0,
-#                      ax1.get_position().y0,
-#                      ax3.get_position().width,
-#                      ax3.get_position().height])
     # panel label
-    plot_subplot_label(ax1, 'a', left_offset=-0.1, upper_offset=0.1, fontsize=12)
-    plot_subplot_label(ax2, 'b', left_offset=-0.1,upper_offset=0.1, fontsize=12)
-    plot_subplot_label(ax3, 'c', left_offset=-0.1,upper_offset=0.1, fontsize=12)
+    plot_subplot_label(ax1, '(a)', left_offset=-0.11, upper_offset=0.1, fontsize=12)
+    plot_subplot_label(ax2, '(b)', left_offset=-0.11,upper_offset=0.1, fontsize=12)
+    plot_subplot_label(ax3, '(c)', left_offset=-0.14,upper_offset=0.1, fontsize=12)
     
     plt.subplots_adjust(hspace=0.1)
-    plt.savefig('../figure/figure_et_prec0929.png',dpi=300,bbox_inches='tight')
+    plt.savefig('../figure/figure_et_prec1020.png',dpi=600,bbox_inches='tight')
+    plt.savefig('../figure/figure_et_prec1020.pdf',bbox_inches='tight')
     print('figure saved')
 
 if __name__=="__main__":
